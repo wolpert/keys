@@ -6,10 +6,11 @@ assertj = "3.26.3"
 codehead-test = "1.0.10"
 codehead-metrics = "2.0.6"
 dagger = "2.52"
-dropwizard4 = "4.0.8"
+dropwizard = "4.0.8"
 guava = "33.3.0-jre"
 hsqldb = '2.7.3'
 immutables = '2.10.1'
+jackson-blackbird = "2.17.2"
 jdbi = '3.45.4'
 junit-jupiter = "5.11.0"
 liquibase = '4.29.2'
@@ -26,10 +27,10 @@ codehead-metrics-micrometer = { module = "com.codeheadsystems:metrics-micrometer
 codehead-metrics-test = { module = "com.codeheadsystems:metrics-test", version.ref = "codehead-metrics" }
 dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
-dropwizard-bom= { module = "io.dropwizard:dropwizard-bom", version.ref = "dropwizard4" }
-dropwizard-core= { module = "io.dropwizard:dropwizard-core" }
+dropwizard-core= { module = "io.dropwizard:dropwizard-core", version.ref = "dropwizard" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
+jackson-blackbird = { module = "com.fasterxml.jackson.module:jackson-module-blackbird", version.ref = "jackson-blackbird" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 javax-inject = { module = "javax.inject:javax.inject", version = "1" }
@@ -51,6 +52,7 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 [bundles]
+jackson = ["jackson-blackbird"]
 testing = ["mockito-core", "mockito-junit-jupiter", "assertj", "junit-jupiter", "junit-jupiter-api", "junit-jupiter-engine", "junit-jupiter-params", "codehead-test"]
 logging = ["slf4j-api"]
 logback = ["logback-access", "logback-classic", "logback-core"]

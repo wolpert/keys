@@ -7,9 +7,7 @@ plugins {
 }
 
 dependencies {
-
-    implementation(platform(libs.dropwizard.bom))
-    implementation(libs.dropwizard.core)
+    implementation(libs.dropwizard.core) // TODO: use where the paths really come from, not core.
 
     implementation(libs.javax.inject)
     implementation(libs.immutables.annotations)
