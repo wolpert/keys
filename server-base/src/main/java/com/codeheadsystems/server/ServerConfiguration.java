@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server;
+package com.codeheadsystems.server;
 
 import io.dropwizard.core.Configuration;
 

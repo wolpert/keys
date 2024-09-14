@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.component;
+package com.codeheadsystems.server.component;
 
-import com.codeheadsystems.keys.server.initializer.Initializer;
+import com.codeheadsystems.server.initializer.Initializer;
 import java.util.Set;
 
 /**

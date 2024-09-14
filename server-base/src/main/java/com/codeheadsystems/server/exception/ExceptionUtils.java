@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.exception;
+package com.codeheadsystems.server.exception;
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.util.Optional;

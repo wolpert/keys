@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.resource;
+package com.codeheadsystems.server.resource;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.codeheadsystems.keys.server.exception.NotFoundException;
+import com.codeheadsystems.server.exception.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import javax.inject.Inject;

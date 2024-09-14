@@ -3,22 +3,22 @@
  */
 
 plugins {
-    id("buildlogic.java-application-conventions")
+    id("buildlogic.java-library-conventions")
 }
 
 dependencies {
-    implementation(project(":api"))
     implementation(platform(libs.dropwizard.bom))
     implementation(libs.dropwizard.core)
-    implementation(libs.micrometer.core)
 
     implementation(libs.bundles.logging)
+
     implementation(libs.javax.inject)
     implementation(libs.dagger)
     annotationProcessor(libs.dagger.compiler)
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 
+    implementation(libs.micrometer.core)
     implementation(libs.codehead.metrics)
     implementation(libs.codehead.metrics.micrometer)
 
@@ -28,10 +28,4 @@ dependencies {
     testImplementation(libs.codehead.metrics.test)
     testAnnotationProcessor(libs.dagger.compiler)
     testAnnotationProcessor(libs.immutables.value)
-
-}
-
-application {
-    // Define the main class for the application.
-    mainClass = "org.example.app.App"
 }

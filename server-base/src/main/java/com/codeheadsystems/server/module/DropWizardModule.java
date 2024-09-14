@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.module;
+package com.codeheadsystems.server.module;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
-import com.codeheadsystems.keys.server.ServerConfiguration;
-import com.codeheadsystems.keys.server.initializer.HealthCheckInitializer;
-import com.codeheadsystems.keys.server.initializer.Initializer;
-import com.codeheadsystems.keys.server.initializer.JerseyResourceInitializer;
-import com.codeheadsystems.keys.server.initializer.ManagedObjectInitializer;
-import com.codeheadsystems.keys.server.resource.JerseyResource;
-import com.codeheadsystems.keys.server.resource.MetricTagsResource;
-import com.codeheadsystems.keys.server.resource.NotFoundExceptionMapper;
+import com.codeheadsystems.server.ServerConfiguration;
+import com.codeheadsystems.server.initializer.HealthCheckInitializer;
+import com.codeheadsystems.server.initializer.Initializer;
+import com.codeheadsystems.server.initializer.JerseyResourceInitializer;
+import com.codeheadsystems.server.initializer.ManagedObjectInitializer;
+import com.codeheadsystems.server.resource.JerseyResource;
+import com.codeheadsystems.server.resource.MetricTagsResource;
+import com.codeheadsystems.server.resource.NotFoundExceptionMapper;
 import com.codeheadsystems.metrics.MetricFactory;
 import com.codeheadsystems.metrics.Metrics;
 import com.codeheadsystems.metrics.Tags;

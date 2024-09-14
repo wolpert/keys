@@ -1,8 +1,8 @@
-package com.codeheadsystems.keys.server.initializer;
+package com.codeheadsystems.server.initializer;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-import com.codeheadsystems.keys.server.resource.JerseyResource;
+import com.codeheadsystems.server.resource.JerseyResource;
 import io.dropwizard.core.setup.Environment;
 import java.util.Set;
 import javax.inject.Inject;

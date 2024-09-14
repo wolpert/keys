@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server;
+package com.codeheadsystems.server;
 
-import com.codeheadsystems.keys.server.component.DropWizardComponent;
-import com.codeheadsystems.keys.server.module.DropWizardModule;
+import com.codeheadsystems.server.component.DropWizardComponent;
+import com.codeheadsystems.server.module.DropWizardModule;
 import io.dropwizard.core.Application;
+import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

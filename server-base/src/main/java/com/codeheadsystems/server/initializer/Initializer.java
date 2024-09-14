@@ -1,4 +1,4 @@
-package com.codeheadsystems.keys.server.initializer;
+package com.codeheadsystems.server.initializer;
 
 import io.dropwizard.core.setup.Environment;
 

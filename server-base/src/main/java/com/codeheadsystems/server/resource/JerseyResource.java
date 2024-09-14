@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.resource;
+package com.codeheadsystems.server.resource;
 
 /**
  * Used to identify Jersey resources.

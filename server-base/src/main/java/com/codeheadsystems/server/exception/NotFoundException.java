@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.keys.server.exception;
+package com.codeheadsystems.server.exception;
 
 /**
  * Generic 404.
