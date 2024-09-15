@@ -10,7 +10,6 @@ dependencies {
     implementation(libs.dropwizard.core)
 
     implementation(libs.bundles.logging)
-    implementation(libs.bundles.jackson)
 
     implementation(libs.javax.inject)
     implementation(libs.dagger)

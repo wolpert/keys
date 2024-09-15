@@ -10,7 +10,6 @@ dropwizard = "4.0.8"
 guava = "33.3.0-jre"
 hsqldb = '2.7.3'
 immutables = '2.10.1'
-jackson = "2.17.2"
 jdbi = '3.45.4'
 junit-jupiter = "5.11.0"
 liquibase = '4.29.2'
@@ -31,7 +30,6 @@ dropwizard-core= { module = "io.dropwizard:dropwizard-core", version.ref = "drop
 dropwizard-testing= { module = "io.dropwizard:dropwizard-testing", version.ref = "dropwizard" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
-jackson-blackbird = { module = "com.fasterxml.jackson.module:jackson-module-blackbird", version.ref = "jackson" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 jarkarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version.ref = "rs-api" }
@@ -51,6 +49,5 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 [bundles]
-jackson = ["jackson-blackbird"]
 testing = ["mockito-core", "mockito-junit-jupiter", "assertj", "junit-jupiter", "junit-jupiter-api", "junit-jupiter-engine", "junit-jupiter-params", "codehead-test"]
 logging = ["slf4j-api"]
