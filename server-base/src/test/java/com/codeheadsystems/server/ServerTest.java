@@ -17,8 +17,6 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
 import java.time.Clock;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -114,6 +112,10 @@ class ServerTest {
       LoggerFactory.getLogger(HelloWorldResource.class).info("hello()");
       return HELLO_WORLD;
     }
+  }
+
+  public static class ServerTestConfiguration extends ServerConfiguration {
+
   }
 
 
