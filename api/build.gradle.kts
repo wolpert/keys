@@ -12,7 +12,6 @@ dependencies {
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 
-    testImplementation(libs.bundles.logback)
     testImplementation(libs.bundles.testing)
     testImplementation(libs.codehead.test)
     testAnnotationProcessor(libs.immutables.value)
