@@ -7,9 +7,8 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.dropwizard.core) // TODO: use where the paths really come from, not core.
+    implementation(libs.jarkarta.rs.api)
 
-    implementation(libs.javax.inject)
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 

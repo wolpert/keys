@@ -18,6 +18,7 @@ logback = '1.5.8'
 micrometer = '1.13.4'
 mokito = '5.13.0'
 slf4j = '2.0.16'
+rs-api = "3.0.0"
 
 [libraries]
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
@@ -33,6 +34,7 @@ hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
 jackson-blackbird = { module = "com.fasterxml.jackson.module:jackson-module-blackbird", version.ref = "jackson-blackbird" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
+jarkarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version.ref = "rs-api" }
 javax-inject = { module = "javax.inject:javax.inject", version = "1" }
 jdbi-core = {module = "org.jdbi:jdbi3-core", version.ref = "jdbi" }
 jdbi-testing = {module = "org.jdbi:jdbi3-testing", version.ref = "jdbi" }
