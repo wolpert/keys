@@ -24,10 +24,12 @@ import jakarta.ws.rs.container.ContainerResponseFilter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * Used so that we can have set the default tags needed for metrics.
@@ -70,13 +72,16 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
   public void filter(final ContainerRequestContext requestContext) throws IOException {
     final MetricFactory.MetricsContext oldContext = metricsContextThreadLocal.get();
     if (oldContext != null) {
-      LOGGER.warn("Metrics context already set. This is a bug. {}", oldContext);
+      LOGGER.debug("Metrics context already set, clearing. {}", oldContext);
       metricFactory.disableMetricsContext(oldContext);
     }
     final MetricFactory.MetricsContext context = metricFactory.enableMetricsContext();
     metricsContextThreadLocal.set(context);
+    MDC.put("trace", UUID.randomUUID().toString());
     //TODO: this is bad when tenant/table or whatnot appears in the path. Figure it out. :/
-    metricFactory.and("path", requestContext.getUriInfo().getPath());
+    final String path = requestContext.getUriInfo().getPath();
+    metricFactory.and("path", path);
+    LOGGER.trace("MetricTagsResource.filter start:{}", path);
   }
 
   /**
@@ -89,10 +94,10 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
   @Override
   public void filter(final ContainerRequestContext requestContext,
                      final ContainerResponseContext responseContext) throws IOException {
+    LOGGER.trace("MetricTagsResource.filter end:{}", requestContext.getUriInfo().getPath());
+    MDC.clear();
     final MetricFactory.MetricsContext context = metricsContextThreadLocal.get();
-    if (context == null) {
-      LOGGER.warn("Metrics context not set. This is a bug.");
-    } else {
+    if (context != null) {
       metricFactory.disableMetricsContext(context);
       metricsContextThreadLocal.remove();
     }

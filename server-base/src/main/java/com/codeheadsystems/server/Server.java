@@ -20,8 +20,10 @@ import com.codeheadsystems.server.component.DropWizardComponent;
 import com.codeheadsystems.server.module.DropWizardModule;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Environment;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * This is our application itself. Very little here is node specific.
@@ -56,12 +58,14 @@ public abstract class Server<T extends ServerConfiguration> extends Application<
   @Override
   public void run(final T configuration,
                   final Environment environment) throws Exception {
+    MDC.put("trace", "init-" + getName() + "-" + UUID.randomUUID());
     LOGGER.info("run({},{})", configuration, environment);
     LOGGER.info("\n---\n--- Server Setup Starting ---\n---");
     final DropWizardModule module = new DropWizardModule(environment, configuration);
     final DropWizardComponent component = dropWizardComponent(module);
     component.serverInitializer().initialize();
     LOGGER.info("\n---\n--- Server Setup Complete ---\n---");
+    MDC.clear();
   }
 
 }
