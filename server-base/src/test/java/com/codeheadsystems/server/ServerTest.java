@@ -48,7 +48,7 @@ class ServerTest {
   }
 
   /**
-   * Creates the pieces needed for the control plane to run.
+   * Creates the pieces needed for the control plane to run. Required.
    */
   @Component(modules = {
       DropWizardModule.class,
@@ -59,6 +59,9 @@ class ServerTest {
   public interface ServerTestDropWizardComponent extends DropWizardComponent {
   }
 
+  /**
+   * A binder interface if you don't want to have explicit objects. Optional.
+   */
   @Module
   public interface ServerTestBinderModule {
     @Binds
@@ -66,6 +69,9 @@ class ServerTest {
     JerseyResource helloWorldResource(final HelloWorldResource resource);
   }
 
+  /**
+   * The server itself, What will have the main class to run when not a test.
+   */
   public static class ServerTestServer extends Server<ServerTestConfiguration> {
     @Override
     protected DropWizardComponent dropWizardComponent(final DropWizardModule module) {
@@ -75,6 +81,9 @@ class ServerTest {
     }
   }
 
+  /**
+   * Define some objects to be injected via code.
+   */
   @Module
   public static class ServerTestConfigurationModule {
 
@@ -98,6 +107,9 @@ class ServerTest {
 
   }
 
+  /**
+   * A sample resource to expose with dropwizard.
+   */
   @Singleton
   @Path("/")
   public static class HelloWorldResource implements JerseyResource {
@@ -114,6 +126,9 @@ class ServerTest {
     }
   }
 
+  /**
+   * The configuration of the dropwizard server. Required.
+   */
   public static class ServerTestConfiguration extends ServerConfiguration {
 
   }
