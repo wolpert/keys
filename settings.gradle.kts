@@ -11,4 +11,4 @@ plugins {
 }
 
 rootProject.name = "keys"
-include("api", "server-base")
+include("api", "server-base", "keys-server")
