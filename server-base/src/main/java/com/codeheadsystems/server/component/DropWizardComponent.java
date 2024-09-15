@@ -16,8 +16,7 @@
 
 package com.codeheadsystems.server.component;
 
-import com.codeheadsystems.server.initializer.Initializer;
-import java.util.Set;
+import com.codeheadsystems.server.initializer.ServerInitializer;
 
 /**
  * Expected drop wizard sets needed for initialization.
@@ -29,6 +28,6 @@ public interface DropWizardComponent {
    *
    * @return initializer set.
    */
-  Set<Initializer> initializers();
+  ServerInitializer serverInitializer();
 
 }

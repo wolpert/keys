@@ -24,7 +24,6 @@ import io.dropwizard.core.Configuration;
 public class ServerConfiguration extends Configuration {
 
   private String stage = "dev"; // dev, test, alpha, beta, gamma, prod
-  private boolean useTestJavaClient = false;
 
   /**
    * Instantiates a new Server configuration.
@@ -51,21 +50,4 @@ public class ServerConfiguration extends Configuration {
     this.stage = stage;
   }
 
-  /**
-   * Is use test java client boolean.
-   *
-   * @return the boolean
-   */
-  public boolean isUseTestJavaClient() {
-    return useTestJavaClient;
-  }
-
-  /**
-   * Sets use test java client.
-   *
-   * @param useTestJavaClient the use test java client
-   */
-  public void setUseTestJavaClient(final boolean useTestJavaClient) {
-    this.useTestJavaClient = useTestJavaClient;
-  }
 }

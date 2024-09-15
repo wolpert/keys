@@ -19,7 +19,6 @@ package com.codeheadsystems.server;
 import com.codeheadsystems.server.component.DropWizardComponent;
 import com.codeheadsystems.server.module.DropWizardModule;
 import io.dropwizard.core.Application;
-import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +60,7 @@ public abstract class Server<T extends ServerConfiguration> extends Application<
     LOGGER.info("\n---\n--- Server Setup Starting ---\n---");
     final DropWizardModule module = new DropWizardModule(environment, configuration);
     final DropWizardComponent component = dropWizardComponent(module);
-    component.initializers().forEach(i -> i.initialize(environment));
+    component.serverInitializer().initialize();
     LOGGER.info("\n---\n--- Server Setup Complete ---\n---");
   }
 

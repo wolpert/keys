@@ -312,36 +312,6 @@ public class DropWizardModule {
     Set<Managed> managedObjects();
 
     /**
-     * Initializer provider.
-     *
-     * @param initializer the specific initializer.
-     * @return the generic initializer.
-     */
-    @Binds
-    @IntoSet
-    Initializer healthCheckInitializer(HealthCheckInitializer initializer);
-
-    /**
-     * Initializer provider.
-     *
-     * @param initializer the specific initializer.
-     * @return the generic initializer.
-     */
-    @Binds
-    @IntoSet
-    Initializer managedObjectInitializer(ManagedObjectInitializer initializer);
-
-    /**
-     * Initializer provider.
-     *
-     * @param initializer the specific initializer.
-     * @return the generic initializer.
-     */
-    @Binds
-    @IntoSet
-    Initializer jerseyResourceInitializer(JerseyResourceInitializer initializer);
-
-    /**
      * Not found exception mapper.
      *
      * @param resource resource.
