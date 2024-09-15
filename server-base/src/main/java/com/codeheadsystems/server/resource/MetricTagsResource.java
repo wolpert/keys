@@ -53,15 +53,6 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     LOGGER.info("MetricTagsResource({})", metricFactory);
   }
 
-  private static String getHost() {
-    try {
-      return InetAddress.getLocalHost().getCanonicalHostName();
-    } catch (UnknownHostException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-
   /**
    * Sets the default tags.
    *
@@ -78,7 +69,6 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     final MetricFactory.MetricsContext context = metricFactory.enableMetricsContext();
     metricsContextThreadLocal.set(context);
     MDC.put("trace", UUID.randomUUID().toString());
-    //TODO: this is bad when tenant/table or whatnot appears in the path. Figure it out. :/
     final String path = requestContext.getUriInfo().getPath();
     metricFactory.and("path", path);
     LOGGER.trace("MetricTagsResource.filter start:{}", path);

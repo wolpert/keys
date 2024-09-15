@@ -236,6 +236,7 @@ public class DropWizardModule {
                                      final Clock clock,
                                      final TagsGeneratorRegistry tagsGeneratorRegistry) {
     return MetricFactory.builder()
+        .withPrefix(applicationName)
         .withMetricPublisher(metricPublisher)
         .withTags(defaultTags)
         .withClock(clock)
@@ -264,7 +265,6 @@ public class DropWizardModule {
   ) {
     return Tags.of(
         "host", getHost(),
-        "application", applicationName,
         "stage", deployment);
   }
 

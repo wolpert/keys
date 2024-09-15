@@ -7,6 +7,9 @@ import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The type Server initializer.
+ */
 @Singleton
 public class ServerInitializer {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServerInitializer.class);
@@ -17,6 +20,14 @@ public class ServerInitializer {
   private final Environment environment;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
+  /**
+   * Instantiates a new Server initializer.
+   *
+   * @param healthCheckInitializer    the health check initializer
+   * @param managedObjectInitializer  the managed object initializer
+   * @param jerseyResourceInitializer the jersey resource initializer
+   * @param environment               the environment
+   */
   @Inject
   public ServerInitializer(final HealthCheckInitializer healthCheckInitializer,
                            final ManagedObjectInitializer managedObjectInitializer,
@@ -30,6 +41,9 @@ public class ServerInitializer {
     this.environment = environment;
   }
 
+  /**
+   * Initialize.
+   */
   public void initialize() {
     LOGGER.info("\n---\n--- Initializing Server ---\n---");
     synchronized (initialized) {

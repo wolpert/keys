@@ -2,6 +2,7 @@ package com.codeheadsystems.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codahale.metrics.health.HealthCheck;
 import com.codeheadsystems.server.component.DropWizardComponent;
 import com.codeheadsystems.server.module.DropWizardModule;
 import com.codeheadsystems.server.resource.JerseyResource;
@@ -83,6 +84,18 @@ class ServerTest {
     @Singleton
     Clock clock() {
       return Clock.systemUTC();
+    }
+
+    @Provides
+    @Singleton
+    @IntoSet
+    HealthCheck fakeHealthCheck() {
+      return new HealthCheck() {
+        @Override
+        protected Result check() {
+          return Result.healthy();
+        }
+      };
     }
 
   }
