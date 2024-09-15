@@ -14,7 +14,7 @@ jackson-blackbird = "2.17.2"
 jdbi = '3.45.4'
 junit-jupiter = "5.11.0"
 liquibase = '4.29.2'
-logback = '1.5.8'
+logback = '1.4.14'  # Stuck at 1.4.14 for dropwizard!
 micrometer = '1.13.4'
 mokito = '5.13.0'
 slf4j = '2.0.16'
@@ -29,6 +29,7 @@ codehead-metrics-test = { module = "com.codeheadsystems:metrics-test", version.r
 dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
 dropwizard-core= { module = "io.dropwizard:dropwizard-core", version.ref = "dropwizard" }
+dropwizard-testing= { module = "io.dropwizard:dropwizard-testing", version.ref = "dropwizard" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
 jackson-blackbird = { module = "com.fasterxml.jackson.module:jackson-module-blackbird", version.ref = "jackson-blackbird" }

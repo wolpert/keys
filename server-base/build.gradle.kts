@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.codehead.metrics)
     implementation(libs.codehead.metrics.micrometer)
 
+    testImplementation(libs.dropwizard.testing)
     testImplementation(libs.bundles.logback)
     testImplementation(libs.bundles.testing)
     testImplementation(libs.codehead.test)
