@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":api"))
     implementation(project(":server-base"))
     implementation(libs.dropwizard.core)
+    implementation(libs.commons.codec)
 
     implementation(libs.bundles.logging)
 
