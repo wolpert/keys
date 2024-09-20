@@ -17,7 +17,7 @@ liquibase = '4.29.2'
 micrometer = '1.13.4'
 mokito = '5.13.0'
 slf4j = '2.0.16'
-rs-api = "3.0.0"
+rs-api = "4.0.0"
 
 [libraries]
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
