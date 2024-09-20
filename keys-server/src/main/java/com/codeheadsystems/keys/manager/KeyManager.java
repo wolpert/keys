@@ -1,6 +1,7 @@
 package com.codeheadsystems.keys.manager;
 
 import com.codeheadsystems.keys.model.RawKey;
+import com.codeheadsystems.metrics.Metrics;
 import java.security.SecureRandom;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -17,6 +18,7 @@ public class KeyManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(KeyManager.class);
 
   private final SecureRandom secureRandom;
+  private final Metrics metrics;
 
   /**
    * Instantiates a new Key manager.
@@ -24,8 +26,11 @@ public class KeyManager {
    * @param secureRandom the secure random
    */
   @Inject
-  public KeyManager(final SecureRandom secureRandom) {
+  public KeyManager(final SecureRandom secureRandom,
+                    final Metrics metrics) {
+    LOGGER.info("KeyManager({}, {})", secureRandom, metrics);
     this.secureRandom = secureRandom;
+    this.metrics = metrics;
   }
 
   /**

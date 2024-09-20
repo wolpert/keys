@@ -17,6 +17,7 @@
 package com.codeheadsystems.server.resource;
 
 import com.codeheadsystems.metrics.MetricFactory;
+import com.codeheadsystems.metrics.Tags;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -88,6 +89,8 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     MDC.clear();
     final MetricFactory.MetricsContext context = metricsContextThreadLocal.get();
     if (context != null) {
+      metricFactory.publishTime("request." + requestContext.getUriInfo().getBaseUri(),
+          context.duration(), Tags.of("status", Integer.toString(responseContext.getStatus())));
       metricFactory.disableMetricsContext(context);
       metricsContextThreadLocal.remove();
     }
