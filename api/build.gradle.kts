@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
     implementation(libs.jarkarta.rs.api)
+    implementation(libs.jackson.databind)
 
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)

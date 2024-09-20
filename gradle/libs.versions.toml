@@ -11,6 +11,7 @@ dropwizard = "4.0.8"
 guava = "33.3.0-jre"
 hsqldb = '2.7.3'
 immutables = '2.10.1'
+jackson = '2.17.2'
 jdbi = '3.45.4'
 junit-jupiter = "5.11.0"
 liquibase = '4.29.2'
@@ -28,17 +29,22 @@ codehead-metrics-test = { module = "com.codeheadsystems:metrics-test", version.r
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
-dropwizard-core= { module = "io.dropwizard:dropwizard-core", version.ref = "dropwizard" }
-dropwizard-testing= { module = "io.dropwizard:dropwizard-testing", version.ref = "dropwizard" }
+dropwizard-core = { module = "io.dropwizard:dropwizard-core", version.ref = "dropwizard" }
+dropwizard-testing = { module = "io.dropwizard:dropwizard-testing", version.ref = "dropwizard" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
+jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
+jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version.ref = "jackson" }
+jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jarkarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version.ref = "rs-api" }
 javax-inject = { module = "javax.inject:javax.inject", version = "1" }
-jdbi-core = {module = "org.jdbi:jdbi3-core", version.ref = "jdbi" }
-jdbi-testing = {module = "org.jdbi:jdbi3-testing", version.ref = "jdbi" }
-jdbi-sqlobject = {module = "org.jdbi:jdbi3-sqlobject", version.ref = "jdbi" }
+jdbi-core = { module = "org.jdbi:jdbi3-core", version.ref = "jdbi" }
+jdbi-testing = { module = "org.jdbi:jdbi3-testing", version.ref = "jdbi" }
+jdbi-sqlobject = { module = "org.jdbi:jdbi3-sqlobject", version.ref = "jdbi" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }

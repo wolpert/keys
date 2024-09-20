@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory;
 
 public class KeyUtilities {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(KeyUtilities.class);
-
   public static final Function<byte[], String> encode = Hex::encodeHexString;
+  private static final Logger LOGGER = LoggerFactory.getLogger(KeyUtilities.class);
   public static final Function<String, Optional<byte[]>> decode = s -> {
     try {
       return Optional.of(Hex.decodeHex(s));

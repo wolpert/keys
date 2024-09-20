@@ -7,12 +7,14 @@ import com.codeheadsystems.keys.manager.KeyManager;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.server.resource.JerseyResource;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The type Keys resource.
  */
+@Singleton
 public class KeysResource implements Keys, JerseyResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(KeysResource.class);
@@ -29,12 +31,14 @@ public class KeysResource implements Keys, JerseyResource {
   @Inject
   public KeysResource(final KeyManager keyManager,
                       final KeyConverter keyConverter) {
+    LOGGER.info("KeysResource({},{})", keyManager, keyConverter);
     this.keyManager = keyManager;
     this.keyConverter = keyConverter;
   }
 
   @Override
   public Key create() {
+    LOGGER.trace("create()");
     final RawKey rawKey = keyManager.generateRawKey(256);
     return keyConverter.from(rawKey);
   }
