@@ -1,6 +1,6 @@
 # Keys
 
-A complete example of a dropwizard server using the codehead library.
+A complete example of a dropwizard server using the codehead libraries.
 This includes:
 - metrics
 - testing
