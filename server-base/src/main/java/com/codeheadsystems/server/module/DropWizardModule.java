@@ -29,6 +29,7 @@ import com.codeheadsystems.server.ServerConfiguration;
 import com.codeheadsystems.server.resource.JerseyResource;
 import com.codeheadsystems.server.resource.MetricTagsResource;
 import com.codeheadsystems.server.resource.NotFoundExceptionMapper;
+import com.codeheadsystems.server.resource.RequestDecomposition;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dagger.Binds;
 import dagger.Module;
@@ -275,6 +276,17 @@ public class DropWizardModule {
   public Supplier<Tags> defaultTagSupplier(final Tags defaultTags) {
     final Optional<Tags> optional = Optional.of(defaultTags);
     return optional::get;
+  }
+
+  /**
+   * Request decomposition factory request decomposition . factory.
+   *
+   * @return the request decomposition . factory
+   */
+  @Provides
+  @Singleton
+  public RequestDecomposition.Factory requestDecompositionFactory() {
+    return new RequestDecomposition.Factory();
   }
 
   /**
