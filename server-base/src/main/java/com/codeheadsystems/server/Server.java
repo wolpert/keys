@@ -16,6 +16,8 @@
 
 package com.codeheadsystems.server;
 
+import com.codeheadsystems.metrics.Metrics;
+import com.codeheadsystems.metrics.declarative.DeclarativeFactory;
 import com.codeheadsystems.server.component.DropWizardComponent;
 import com.codeheadsystems.server.module.DropWizardModule;
 import io.dropwizard.core.Application;
@@ -48,6 +50,11 @@ public abstract class Server<T extends ServerConfiguration> extends Application<
    */
   protected abstract DropWizardComponent dropWizardComponent(final DropWizardModule module);
 
+  @DeclarativeFactory
+  protected Metrics metrics(DropWizardComponent component) {
+    return component.metrics();
+  }
+
   /**
    * Runs the application.
    *
@@ -63,6 +70,8 @@ public abstract class Server<T extends ServerConfiguration> extends Application<
     LOGGER.info("\n---\n--- Server Setup Starting ---\n---");
     final DropWizardModule module = new DropWizardModule(environment, configuration);
     final DropWizardComponent component = dropWizardComponent(module);
+    final Metrics metrics = metrics(component);
+    LOGGER.info("Metrics: {}", metrics); // ensures it is created in a declarative fashion.
     component.serverInitializer().initialize();
     LOGGER.info("\n---\n--- Server Setup Complete ---\n---");
     MDC.clear();

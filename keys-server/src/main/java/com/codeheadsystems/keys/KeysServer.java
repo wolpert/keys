@@ -29,18 +29,11 @@ public class KeysServer extends Server<KeysServerConfiguration> {
     server.run(args);
   }
 
-  @DeclarativeFactory
-  protected Metrics metrics(DropWizardComponent component) {
-    return component.metrics();
-  }
-
   @Override
   protected DropWizardComponent dropWizardComponent(final DropWizardModule module) {
-    final KeysServerComponent component = DaggerKeysServerComponent.builder()
+    return DaggerKeysServerComponent.builder()
         .dropWizardModule(module)
         .build();
-    metrics(component);
-    return component;
   }
 
 }

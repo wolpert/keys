@@ -4,6 +4,8 @@
 
 plugins {
     id("buildlogic.java-library-conventions")
+
+    id("io.freefair.aspectj.post-compile-weaving") version "8.10" // Used for aspects metrics
 }
 
 dependencies {
@@ -20,6 +22,8 @@ dependencies {
     implementation(libs.micrometer.core)
     implementation(libs.codehead.metrics)
     implementation(libs.codehead.metrics.micrometer)
+    implementation(libs.codehead.metrics.declarative)
+    aspect(libs.codehead.metrics.declarative)
 
     testImplementation(libs.dropwizard.testing)
     testImplementation(libs.bundles.testing)
