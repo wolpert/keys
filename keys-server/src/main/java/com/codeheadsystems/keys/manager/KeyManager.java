@@ -1,5 +1,6 @@
 package com.codeheadsystems.keys.manager;
 
+import com.codeheadsystems.keys.model.ImmutableRawKey;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.metrics.Metrics;
 import java.security.SecureRandom;
@@ -47,6 +48,18 @@ public class KeyManager {
     byte[] key = new byte[size / 8];
     secureRandom.nextBytes(key);
     return RawKey.of(UUID.randomUUID(), key);
+  }
+
+  /**
+   * Raw key raw key. TEMP method.
+   *
+   * @param uuid the uuid
+   * @return the raw key
+   */
+  public RawKey rawKey(String uuid) {
+    LOGGER.trace("rawKey({})", uuid);
+    final RawKey rawKey = generateRawKey(256);
+    return ImmutableRawKey.copyOf(rawKey).withUuid(UUID.fromString(uuid));
   }
 
 }

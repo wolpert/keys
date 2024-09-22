@@ -18,14 +18,6 @@ package com.codeheadsystems.server.module;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
-import com.codeheadsystems.server.ServerConfiguration;
-import com.codeheadsystems.server.initializer.HealthCheckInitializer;
-import com.codeheadsystems.server.initializer.Initializer;
-import com.codeheadsystems.server.initializer.JerseyResourceInitializer;
-import com.codeheadsystems.server.initializer.ManagedObjectInitializer;
-import com.codeheadsystems.server.resource.JerseyResource;
-import com.codeheadsystems.server.resource.MetricTagsResource;
-import com.codeheadsystems.server.resource.NotFoundExceptionMapper;
 import com.codeheadsystems.metrics.MetricFactory;
 import com.codeheadsystems.metrics.Metrics;
 import com.codeheadsystems.metrics.Tags;
@@ -33,6 +25,10 @@ import com.codeheadsystems.metrics.TagsGenerator;
 import com.codeheadsystems.metrics.helper.TagsGeneratorRegistry;
 import com.codeheadsystems.metrics.impl.MetricPublisher;
 import com.codeheadsystems.metrics.impl.MicrometerMetricsPublisher;
+import com.codeheadsystems.server.ServerConfiguration;
+import com.codeheadsystems.server.resource.JerseyResource;
+import com.codeheadsystems.server.resource.MetricTagsResource;
+import com.codeheadsystems.server.resource.NotFoundExceptionMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dagger.Binds;
 import dagger.Module;
@@ -193,7 +189,7 @@ public class DropWizardModule {
     final DropwizardConfig config = new DropwizardConfig() {
       @Override
       public String prefix() {
-        return "svarm";
+        return applicationName.toLowerCase();
       }
 
       @Override
@@ -236,7 +232,7 @@ public class DropWizardModule {
                                      final Clock clock,
                                      final TagsGeneratorRegistry tagsGeneratorRegistry) {
     return MetricFactory.builder()
-        .withPrefix(applicationName)
+        .withPrefix(applicationName.toLowerCase() + "-")
         .withMetricPublisher(metricPublisher)
         .withTags(defaultTags)
         .withClock(clock)

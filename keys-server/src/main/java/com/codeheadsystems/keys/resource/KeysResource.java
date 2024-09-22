@@ -42,4 +42,11 @@ public class KeysResource implements Keys, JerseyResource {
     final RawKey rawKey = keyManager.generateRawKey(256);
     return keyConverter.from(rawKey);
   }
+
+  @Override
+  public Key get(final String uuid) {
+    LOGGER.trace("get({})", uuid);
+    final RawKey rawKey = keyManager.rawKey(uuid);
+    return keyConverter.from(rawKey);
+  }
 }

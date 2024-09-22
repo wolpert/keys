@@ -10,6 +10,8 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -22,12 +24,33 @@ public class KeyCreationTest {
   );
 
   @Test
-  void create() {
+  void create() throws InterruptedException {
     final Key response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/")
         .request()
         .put(Entity.entity("test", MediaType.APPLICATION_JSON_TYPE), Key.class);
     assertThat(response)
         .isNotNull()
         .hasFieldOrProperty("key");
+  }
+
+  @Test
+  void get() {
+    final UUID uuid = UUID.randomUUID();
+    final Key response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/" + uuid)
+        .request()
+        .get(Key.class);
+    assertThat(response)
+        .isNotNull()
+        .hasFieldOrProperty("key");
+  }
+
+  @Test
+  void bad() {
+    final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/bad")
+        .request()
+        .get();
+    assertThat(response)
+        .isNotNull()
+        .hasFieldOrPropertyWithValue("status", 404);
   }
 }

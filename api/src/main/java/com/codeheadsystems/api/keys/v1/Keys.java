@@ -1,8 +1,10 @@
 package com.codeheadsystems.api.keys.v1;
 
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
@@ -22,5 +24,15 @@ public interface Keys {
   @PUT
   @Path("/")
   Key create();
+
+  /**
+   * Get key.
+   *
+   * @param uuid the uuid
+   * @return the key
+   */
+  @GET
+  @Path("/{uuid}")
+  Key get(@PathParam("uuid") final String uuid);
 
 }

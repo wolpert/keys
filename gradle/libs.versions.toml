@@ -4,7 +4,7 @@
 [versions]
 assertj = "3.26.3"
 codehead-test = "1.0.10"
-codehead-metrics = "2.0.7"
+codehead-metrics = "2.0.8"
 commons-codec = "1.17.1"
 dagger = "2.52"
 dropwizard = "4.0.8"
