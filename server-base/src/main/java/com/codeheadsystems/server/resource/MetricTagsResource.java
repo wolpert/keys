@@ -23,6 +23,7 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -30,6 +31,7 @@ import javax.inject.Singleton;
 import org.glassfish.jersey.server.internal.process.Endpoint;
 import org.glassfish.jersey.server.internal.routing.UriRoutingContext;
 import org.glassfish.jersey.server.model.ResourceMethodInvoker;
+import org.glassfish.jersey.uri.UriTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -56,14 +58,21 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     LOGGER.info("MetricTagsResource({})", metricFactory);
   }
 
-  private Optional<ResourceMethodInvoker> extract(final ContainerRequestContext requestContext) {
+  private Optional<UriRoutingContext> uriRoutingContext(final ContainerRequestContext requestContext) {
     final UriInfo uriInfo = requestContext.getUriInfo();
     if (!(uriInfo instanceof UriRoutingContext)) {
       LOGGER.warn("Not a URI routing context: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
       return Optional.empty();
     }
-    final UriRoutingContext routingContext = (UriRoutingContext) requestContext.getUriInfo();
-    final Endpoint endpoint = routingContext.getEndpoint();
+    return Optional.of((UriRoutingContext) requestContext.getUriInfo());
+  }
+
+  private Optional<ResourceMethodInvoker> resourceMethodInvoker(final ContainerRequestContext requestContext) {
+    Optional<UriRoutingContext> uriRoutingContext = uriRoutingContext(requestContext);
+    if (uriRoutingContext.isEmpty()) {
+      return Optional.empty();
+    }
+    final Endpoint endpoint = uriRoutingContext.get().getEndpoint();
     if (endpoint instanceof final ResourceMethodInvoker resourceMethodInvoker) {
       return Optional.of(resourceMethodInvoker);
     } else {
@@ -80,15 +89,18 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
   }
 
   private String getResource(ContainerRequestContext requestContext) {
-    return extract(requestContext)
+    return resourceMethodInvoker(requestContext)
         .map(this::getResource)
         .orElse("unknown");
   }
 
-  private String endpoint(final ResourceMethodInvoker resourceMethodInvoker) {
-    final String p1 = resourceMethodInvoker.getResourceClass().getSimpleName();
-    final String p2 = resourceMethodInvoker.getResourceMethod().getName();
-    return String.format("%s.%s", p1, p2);
+  private String endpoint(final UriRoutingContext uriRoutingContext) {
+    List<UriTemplate> templates = uriRoutingContext.getMatchedTemplates();
+    if (templates.isEmpty()) {
+      return "unknown";
+    } else {
+      return templates.getLast().getTemplate();
+    }
   }
 
   /**
@@ -108,7 +120,10 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     metricsContextThreadLocal.set(context);
     MDC.put("trace", UUID.randomUUID().toString());
     final String path = requestContext.getUriInfo().getPath();
-    metricFactory.and("resource", getResource(requestContext));
+    final String endpoint = uriRoutingContext(requestContext)
+        .map(this::endpoint)
+        .orElse("unknown");
+    metricFactory.and("endpoint", requestContext.getMethod() + " " + endpoint);
     LOGGER.trace("MetricTagsResource.filter start:{}", path);
   }
 
@@ -130,15 +145,10 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
       // This can happen if there is no resource found for this endpoint. Not really a problem because we cannot start it.
       LOGGER.debug("No metrics context found for path:{}", path);
     } else {
-      // TODO: the metric name really needs to be the path being requested.
-      // Wd don't use path directly because we cannot add UUIDs or the like to metric names.
-      final String endpoint = extract(requestContext)
-          .map(this::endpoint)
-          .orElse("unknown");
-      metricFactory.publishTime("endpoint-" + endpoint,
+      final String resource = getResource(requestContext);
+      metricFactory.publishTime("resource-" + resource,
           context.duration(), metricFactory.and(
-              "status", Integer.toString(responseContext.getStatus()),
-              "method", requestContext.getMethod()
+              "status", Integer.toString(responseContext.getStatus())
           ));
       metricFactory.disableMetricsContext(context);
       metricsContextThreadLocal.remove();
