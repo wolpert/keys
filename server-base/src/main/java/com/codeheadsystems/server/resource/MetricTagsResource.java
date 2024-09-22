@@ -17,13 +17,13 @@
 package com.codeheadsystems.server.resource;
 
 import com.codeheadsystems.metrics.MetricFactory;
-import com.codeheadsystems.metrics.Tags;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -56,23 +56,39 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     LOGGER.info("MetricTagsResource({})", metricFactory);
   }
 
-  private String getResource(final ContainerRequestContext requestContext) {
+  private Optional<ResourceMethodInvoker> extract(final ContainerRequestContext requestContext) {
     final UriInfo uriInfo = requestContext.getUriInfo();
     if (!(uriInfo instanceof UriRoutingContext)) {
       LOGGER.warn("Not a URI routing context: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
-      return "unknown";
+      return Optional.empty();
     }
     final UriRoutingContext routingContext = (UriRoutingContext) requestContext.getUriInfo();
     final Endpoint endpoint = routingContext.getEndpoint();
     if (endpoint instanceof final ResourceMethodInvoker resourceMethodInvoker) {
-      return String.format("%s.%s",
-          resourceMethodInvoker.getResourceClass().getSimpleName(),
-          resourceMethodInvoker.getResourceMethod().getName()
-      );
+      return Optional.of(resourceMethodInvoker);
     } else {
       LOGGER.warn("No endpoint: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
-      return "unknown";
+      return Optional.empty();
     }
+  }
+
+  private String getResource(final ResourceMethodInvoker resourceMethodInvoker) {
+    return String.format("%s.%s",
+        resourceMethodInvoker.getResourceClass().getSimpleName(),
+        resourceMethodInvoker.getResourceMethod().getName()
+    );
+  }
+
+  private String getResource(ContainerRequestContext requestContext) {
+    return extract(requestContext)
+        .map(this::getResource)
+        .orElse("unknown");
+  }
+
+  private String endpoint(final ResourceMethodInvoker resourceMethodInvoker) {
+    final String p1 = resourceMethodInvoker.getResourceClass().getSimpleName();
+    final String p2 = resourceMethodInvoker.getResourceMethod().getName();
+    return String.format("%s.%s", p1, p2);
   }
 
   /**
@@ -111,9 +127,15 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     MDC.clear();
     final MetricFactory.MetricsContext context = metricsContextThreadLocal.get();
     if (context == null) {
-      LOGGER.warn("No metrics context found for path:{}", path);
+      // This can happen if there is no resource found for this endpoint. Not really a problem because we cannot start it.
+      LOGGER.debug("No metrics context found for path:{}", path);
     } else {
-      metricFactory.publishTime("resource-" + getResource(requestContext),
+      // TODO: the metric name really needs to be the path being requested.
+      // Wd don't use path directly because we cannot add UUIDs or the like to metric names.
+      final String endpoint = extract(requestContext)
+          .map(this::endpoint)
+          .orElse("unknown");
+      metricFactory.publishTime("endpoint-" + endpoint,
           context.duration(), metricFactory.and(
               "status", Integer.toString(responseContext.getStatus()),
               "method", requestContext.getMethod()
