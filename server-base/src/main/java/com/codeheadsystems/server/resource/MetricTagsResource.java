@@ -24,7 +24,6 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -57,22 +56,22 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     LOGGER.info("MetricTagsResource({})", metricFactory);
   }
 
-  private Optional<String> getMetricName(final ContainerRequestContext requestContext) {
+  private String getResource(final ContainerRequestContext requestContext) {
     final UriInfo uriInfo = requestContext.getUriInfo();
     if (!(uriInfo instanceof UriRoutingContext)) {
       LOGGER.warn("Not a URI routing context: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
-      return Optional.empty();
+      return "unknown";
     }
     final UriRoutingContext routingContext = (UriRoutingContext) requestContext.getUriInfo();
     final Endpoint endpoint = routingContext.getEndpoint();
     if (endpoint instanceof final ResourceMethodInvoker resourceMethodInvoker) {
-      return Optional.of(String.format("endpoint-%s-%s",
+      return String.format("%s.%s",
           resourceMethodInvoker.getResourceClass().getSimpleName(),
           resourceMethodInvoker.getResourceMethod().getName()
-      ).toLowerCase());
+      );
     } else {
       LOGGER.warn("No endpoint: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
-      return Optional.empty();
+      return "unknown";
     }
   }
 
@@ -93,7 +92,7 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     metricsContextThreadLocal.set(context);
     MDC.put("trace", UUID.randomUUID().toString());
     final String path = requestContext.getUriInfo().getPath();
-    metricFactory.and("path", path);
+    metricFactory.and("resource", getResource(requestContext));
     LOGGER.trace("MetricTagsResource.filter start:{}", path);
   }
 
@@ -114,8 +113,8 @@ public class MetricTagsResource implements ContainerRequestFilter, ContainerResp
     if (context == null) {
       LOGGER.warn("No metrics context found for path:{}", path);
     } else {
-      metricFactory.publishTime(getMetricName(requestContext).orElse("endpoint-unknown"),
-          context.duration(), Tags.of(
+      metricFactory.publishTime("resource-" + getResource(requestContext),
+          context.duration(), metricFactory.and(
               "status", Integer.toString(responseContext.getStatus()),
               "method", requestContext.getMethod()
           ));

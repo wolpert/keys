@@ -1,6 +1,9 @@
 package com.codeheadsystems.keys;
 
 import com.codeheadsystems.keys.component.DaggerKeysServerComponent;
+import com.codeheadsystems.keys.component.KeysServerComponent;
+import com.codeheadsystems.metrics.Metrics;
+import com.codeheadsystems.metrics.declarative.DeclarativeFactory;
 import com.codeheadsystems.server.Server;
 import com.codeheadsystems.server.component.DropWizardComponent;
 import com.codeheadsystems.server.module.DropWizardModule;
@@ -26,11 +29,18 @@ public class KeysServer extends Server<KeysServerConfiguration> {
     server.run(args);
   }
 
+  @DeclarativeFactory
+  protected Metrics metrics(DropWizardComponent component) {
+    return component.metrics();
+  }
+
   @Override
   protected DropWizardComponent dropWizardComponent(final DropWizardModule module) {
-    return DaggerKeysServerComponent.builder()
+    final KeysServerComponent component = DaggerKeysServerComponent.builder()
         .dropWizardModule(module)
         .build();
+    metrics(component);
+    return component;
   }
 
 }

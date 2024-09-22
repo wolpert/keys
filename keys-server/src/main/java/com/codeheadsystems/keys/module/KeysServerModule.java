@@ -1,6 +1,9 @@
 package com.codeheadsystems.keys.module;
 
 import com.codeheadsystems.keys.resource.KeysResource;
+import com.codeheadsystems.metrics.MetricFactory;
+import com.codeheadsystems.metrics.Metrics;
+import com.codeheadsystems.metrics.declarative.DeclarativeFactory;
 import com.codeheadsystems.server.resource.JerseyResource;
 import dagger.Binds;
 import dagger.Module;

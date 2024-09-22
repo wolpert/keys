@@ -2,7 +2,8 @@ package com.codeheadsystems.keys.manager;
 
 import com.codeheadsystems.keys.model.ImmutableRawKey;
 import com.codeheadsystems.keys.model.RawKey;
-import com.codeheadsystems.metrics.Metrics;
+import com.codeheadsystems.metrics.declarative.Metrics;
+import com.codeheadsystems.metrics.declarative.Tag;
 import java.security.SecureRandom;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -19,7 +20,6 @@ public class KeyManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(KeyManager.class);
 
   private final SecureRandom secureRandom;
-  private final Metrics metrics;
 
   /**
    * Instantiates a new Key manager.
@@ -27,11 +27,9 @@ public class KeyManager {
    * @param secureRandom the secure random
    */
   @Inject
-  public KeyManager(final SecureRandom secureRandom,
-                    final Metrics metrics) {
-    LOGGER.info("KeyManager({}, {})", secureRandom, metrics);
+  public KeyManager(final SecureRandom secureRandom) {
+    LOGGER.info("KeyManager({})", secureRandom);
     this.secureRandom = secureRandom;
-    this.metrics = metrics;
   }
 
   /**
@@ -40,7 +38,8 @@ public class KeyManager {
    * @param size the size
    * @return the raw key
    */
-  public RawKey generateRawKey(int size) {
+  @Metrics
+  public RawKey generateRawKey(@Tag("size") int size) {
     LOGGER.trace("generateRawKey({}))", size);
     if (size % 8 != 0) {
       throw new IllegalArgumentException("Size must be a multiple of 8");
@@ -56,6 +55,7 @@ public class KeyManager {
    * @param uuid the uuid
    * @return the raw key
    */
+  @Metrics
   public RawKey rawKey(String uuid) {
     LOGGER.trace("rawKey({})", uuid);
     final RawKey rawKey = generateRawKey(256);

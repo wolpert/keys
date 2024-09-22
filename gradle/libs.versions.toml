@@ -24,6 +24,7 @@ rs-api = "4.0.0"
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 codehead-test = { module = "com.codeheadsystems:codehead-test", version.ref = "codehead-test" }
 codehead-metrics = { module = "com.codeheadsystems:metrics", version.ref = "codehead-metrics" }
+codehead-metrics-declarative = { module = "com.codeheadsystems:metrics-declarative", version.ref = "codehead-metrics" }
 codehead-metrics-micrometer = { module = "com.codeheadsystems:metrics-micrometer", version.ref = "codehead-metrics" }
 codehead-metrics-test = { module = "com.codeheadsystems:metrics-test", version.ref = "codehead-metrics" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.verify;
 
 import com.codeheadsystems.keys.model.RawKey;
-import com.codeheadsystems.metrics.test.BaseMetricTest;
 import java.security.SecureRandom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class KeyManagerTest extends BaseMetricTest {
+class KeyManagerTest {
 
   @Mock private SecureRandom secureRandom;
   @Captor private ArgumentCaptor<byte[]> byteCaptor;
@@ -25,7 +24,7 @@ class KeyManagerTest extends BaseMetricTest {
 
   @BeforeEach
   void setUp() {
-    keyManager = new KeyManager(secureRandom, metrics);
+    keyManager = new KeyManager(secureRandom);
   }
 
   @Test

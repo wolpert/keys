@@ -16,6 +16,7 @@
 
 package com.codeheadsystems.server.component;
 
+import com.codeheadsystems.metrics.Metrics;
 import com.codeheadsystems.server.initializer.ServerInitializer;
 
 /**
@@ -29,5 +30,12 @@ public interface DropWizardComponent {
    * @return initializer set.
    */
   ServerInitializer serverInitializer();
+
+  /**
+   * Used to ensure metrics is initialized.
+   *
+   * @return metrics object.
+   */
+  Metrics metrics();
 
 }
