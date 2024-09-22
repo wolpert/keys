@@ -52,6 +52,7 @@ public interface RequestDecomposition {
   class Factory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Factory.class.getName());
+    private static final String UNKNOWN = "unknown";
 
     /**
      * Generate request decomposition.
@@ -65,11 +66,11 @@ public interface RequestDecomposition {
       final Optional<UriRoutingContext> uriRoutingContext = uriRoutingContext(requestContext);
       final String endpoint = uriRoutingContext
           .map(this::endpoint)
-          .orElse("unknown");
+          .orElse(UNKNOWN);
       final String resource = uriRoutingContext
           .map(this::resourceMethodInvoker)
-          .map(this::getResource)
-          .orElse("unknown");
+          .map(this::resource)
+          .orElse(UNKNOWN);
       return ImmutableRequestDecomposition.builder()
           .method(method)
           .endpoint(endpoint)
@@ -80,20 +81,18 @@ public interface RequestDecomposition {
 
     private Optional<UriRoutingContext> uriRoutingContext(final ContainerRequestContext requestContext) {
       final UriInfo uriInfo = requestContext.getUriInfo();
-      if (!(uriInfo instanceof UriRoutingContext)) {
+      if (uriInfo instanceof final UriRoutingContext uriRoutingContext) {
+        return Optional.of(uriRoutingContext);
+      } else {
         LOGGER.warn("Not a URI routing context: {}:{}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         return Optional.empty();
       }
-      return Optional.of((UriRoutingContext) requestContext.getUriInfo());
     }
 
     private ResourceMethodInvoker resourceMethodInvoker(final UriRoutingContext uriRoutingContext) {
-      if (uriRoutingContext == null) {
-        return null;
-      }
       final Endpoint endpoint = uriRoutingContext.getEndpoint();
-      if (endpoint instanceof ResourceMethodInvoker) {
-        return (ResourceMethodInvoker) endpoint;
+      if (endpoint instanceof final ResourceMethodInvoker resourceMethodInvoker) {
+        return resourceMethodInvoker;
       } else {
         LOGGER.warn("Not a ResourceMethodInvoker: {}:{}", uriRoutingContext.getResourceMethod(), uriRoutingContext.getAbsolutePath());
         return null;
@@ -103,14 +102,15 @@ public interface RequestDecomposition {
     private String endpoint(final UriRoutingContext uriRoutingContext) {
       List<UriTemplate> templates = uriRoutingContext.getMatchedTemplates();
       if (templates.isEmpty()) {
-        return "unknown";
+        LOGGER.warn("No matched templates: {}:{}", uriRoutingContext.getResourceMethod(), uriRoutingContext.getAbsolutePath());
+        return UNKNOWN;
       } else {
         // The last template represents the most specific path that matches the resource.
         return templates.getLast().getTemplate();
       }
     }
 
-    private String getResource(final ResourceMethodInvoker resourceMethodInvoker) {
+    private String resource(final ResourceMethodInvoker resourceMethodInvoker) {
       return String.format("%s.%s",
           resourceMethodInvoker.getResourceClass().getSimpleName(),
           resourceMethodInvoker.getResourceMethod().getName()
