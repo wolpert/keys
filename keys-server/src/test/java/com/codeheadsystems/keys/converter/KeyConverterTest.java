@@ -24,13 +24,20 @@ class KeyConverterTest {
   }
 
   @Test
-  void from() throws DecoderException {
-    final Key key = keyConverter.from(RawKey.of(UUID, KEY));
+  void from_to() throws DecoderException {
+    final RawKey rawKey = RawKey.of(UUID, KEY);
+    final Key key = keyConverter.from(rawKey);
     assertThat(key)
         .isNotNull()
         .hasFieldOrPropertyWithValue("key", "0102030405060708");
     assertThat(Hex.decodeHex(key.key()))
         .isEqualTo(KEY);
+
+    final RawKey result = keyConverter.to(key);
+    assertThat(result)
+        .isNotNull()
+        .hasFieldOrPropertyWithValue("uuid", UUID)
+        .hasFieldOrPropertyWithValue("key", KEY);
   }
 
 }

@@ -17,6 +17,13 @@ import org.immutables.value.Value;
 public interface Key {
 
   /**
+   * Uuid string.
+   *
+   * @return the string
+   */
+  String uuid();
+
+  /**
    * Key string.
    *
    * @return the string

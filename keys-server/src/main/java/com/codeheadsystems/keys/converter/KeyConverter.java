@@ -4,6 +4,7 @@ import com.codeheadsystems.api.keys.v1.ImmutableKey;
 import com.codeheadsystems.api.keys.v1.Key;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.keys.utilities.KeyUtilities;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.slf4j.Logger;
@@ -32,7 +33,19 @@ public class KeyConverter {
    */
   public Key from(final RawKey rawKey) {
     final String hex = KeyUtilities.encode.apply(rawKey.key());
-    return ImmutableKey.builder().key(hex).build();
+    return ImmutableKey.builder().key(hex).uuid(rawKey.uuid().toString()).build();
+  }
+
+  /**
+   * To raw key.
+   *
+   * @param key the key
+   * @return the raw key
+   */
+  public RawKey to(final Key key) {
+    final byte[] bytes = KeyUtilities.decode.apply(key.key()).get(); // TODO check for failure.
+    final UUID uuid = UUID.fromString(key.uuid());
+    return RawKey.of(uuid, bytes);
   }
 
 }
