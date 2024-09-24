@@ -49,15 +49,16 @@ public class KeysResource implements Keys, JerseyResource {
   }
 
   @Override
-  public Key read(final String uuid) {
+  public Response read(final String uuid) {
     LOGGER.trace("get({})", uuid);
     final RawKey rawKey = keyManager.rawKey(uuid);
-    return keyConverter.from(rawKey);
+    final Key key = keyConverter.from(rawKey);
+    return Response.ok(key)
+        .build();
   }
 
   @Override
   public Response delete(final String uuid) {
-    return Response.accepted()
-        .build();
+    return Response.noContent().build();
   }
 }

@@ -36,10 +36,12 @@ public interface Keys {
   @GET
   @Path("/{uuid}")
   @Produces(MediaType.APPLICATION_JSON)
-  Key read(@PathParam("uuid") final String uuid);
+  Response read(@PathParam("uuid") final String uuid);
 
   /**
-   * Get key.
+   * Deletes the key. Returns a 204 (no-content) if it worked. If it cannot
+   * find the key it returns a 404, and if you are not authenticated it returns
+   * a 401.
    *
    * @param uuid the uuid
    * @return the key

@@ -39,12 +39,15 @@ public class KeyCreationTest {
   @Test
   void get() {
     final UUID uuid = UUID.randomUUID();
-    final Key response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/" + uuid)
+    final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/" + uuid)
         .request()
-        .get(Key.class);
+        .get();
     assertThat(response)
         .isNotNull()
-        .hasFieldOrProperty("key");
+        .hasFieldOrPropertyWithValue("status", 200);
+    final Key key = response.readEntity(Key.class);
+    assertThat(key)
+        .hasFieldOrPropertyWithValue("uuid", uuid.toString());
   }
 
   @Test
