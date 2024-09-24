@@ -2,8 +2,10 @@ package com.codeheadsystems.keys.converter;
 
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import com.codeheadsystems.api.keys.v1.Key;
+import com.codeheadsystems.keys.exception.InvalidKeyException;
 import com.codeheadsystems.keys.model.RawKey;
 import java.util.UUID;
 import org.apache.commons.codec.DecoderException;
@@ -38,6 +40,14 @@ class KeyConverterTest {
         .isNotNull()
         .hasFieldOrPropertyWithValue("uuid", UUID)
         .hasFieldOrPropertyWithValue("key", KEY);
+  }
+
+  @Test
+  void to_invalidKey() {
+    final Key key = com.codeheadsystems.api.keys.v1.ImmutableKey.builder().uuid(UUID.toString()).key("invalid").build();
+    assertThatExceptionOfType(InvalidKeyException.class)
+        .isThrownBy(() -> keyConverter.to(key))
+        .withMessage("Invalid key: " + UUID);
   }
 
 }

@@ -1,5 +1,6 @@
 package com.codeheadsystems.keys.module;
 
+import com.codeheadsystems.keys.resource.InvalidKeyExceptionMapper;
 import com.codeheadsystems.keys.resource.KeysResource;
 import com.codeheadsystems.metrics.MetricFactory;
 import com.codeheadsystems.metrics.Metrics;
@@ -42,6 +43,16 @@ public class KeysServerModule {
     @Binds
     @IntoSet
     JerseyResource keysResource(KeysResource resource);
+
+    /**
+     * invalid key mapper.
+     *
+     * @param resource resource.
+     * @return JerseyResource. jersey resource
+     */
+    @Binds
+    @IntoSet
+    JerseyResource invalidKeyExceptionMapper(InvalidKeyExceptionMapper resource);
 
   }
 

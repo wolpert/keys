@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package com.codeheadsystems.server.resource;
+package com.codeheadsystems.keys.resource;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.codeheadsystems.server.exception.NotFoundException;
+import com.codeheadsystems.keys.exception.InvalidKeyException;
+import com.codeheadsystems.server.resource.JerseyResource;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import javax.inject.Inject;
@@ -30,7 +31,7 @@ import javax.inject.Singleton;
  * Mapper for NotFoundExceptions.
  */
 @Singleton
-public class NotFoundExceptionMapper implements JerseyResource, ExceptionMapper<NotFoundException> {
+public class InvalidKeyExceptionMapper implements JerseyResource, ExceptionMapper<InvalidKeyException> {
 
   private final Meter exceptions;
 
@@ -40,8 +41,8 @@ public class NotFoundExceptionMapper implements JerseyResource, ExceptionMapper<
    * @param registry doing this the dropwizard way.
    */
   @Inject
-  public NotFoundExceptionMapper(final MetricRegistry registry) {
-    exceptions = registry.meter(name(getClass(), "exceptions-NotFoundException"));
+  public InvalidKeyExceptionMapper(final MetricRegistry registry) {
+    exceptions = registry.meter(name(getClass(), "exceptions-InvalidKeyException"));
   }
 
   /**
@@ -51,8 +52,8 @@ public class NotFoundExceptionMapper implements JerseyResource, ExceptionMapper<
    * @return the 404 response.
    */
   @Override
-  public Response toResponse(final NotFoundException exception) {
+  public Response toResponse(final InvalidKeyException exception) {
     exceptions.mark();
-    return Response.status(Response.Status.NOT_FOUND).build();
+    return Response.status(Response.Status.BAD_REQUEST).build();
   }
 }

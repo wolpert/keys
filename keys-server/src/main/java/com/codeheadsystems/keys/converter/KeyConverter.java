@@ -2,6 +2,7 @@ package com.codeheadsystems.keys.converter;
 
 import com.codeheadsystems.api.keys.v1.ImmutableKey;
 import com.codeheadsystems.api.keys.v1.Key;
+import com.codeheadsystems.keys.exception.InvalidKeyException;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.keys.utilities.KeyUtilities;
 import java.util.UUID;
@@ -43,7 +44,8 @@ public class KeyConverter {
    * @return the raw key
    */
   public RawKey to(final Key key) {
-    final byte[] bytes = KeyUtilities.decode.apply(key.key()).get(); // TODO check for failure.
+    final byte[] bytes = KeyUtilities.decode.apply(key.key())
+        .orElseThrow(() -> new InvalidKeyException(key.uuid()));
     final UUID uuid = UUID.fromString(key.uuid());
     return RawKey.of(uuid, bytes);
   }
