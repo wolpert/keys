@@ -50,6 +50,12 @@ public abstract class Server<T extends ServerConfiguration> extends Application<
    */
   protected abstract DropWizardComponent dropWizardComponent(final DropWizardModule module);
 
+  /**
+   * Metrics metrics.
+   *
+   * @param component the component
+   * @return the metrics
+   */
   @DeclarativeFactory
   protected Metrics metrics(DropWizardComponent component) {
     return component.metrics();

@@ -25,12 +25,15 @@ public class KeyCreationTest {
 
   @Test
   void create() throws InterruptedException {
-    final Key response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/")
+    final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/")
         .request()
-        .put(Entity.entity("test", MediaType.APPLICATION_JSON_TYPE), Key.class);
+        .post(Entity.entity("test", MediaType.APPLICATION_JSON_TYPE));
     assertThat(response)
         .isNotNull()
-        .hasFieldOrProperty("key");
+        .hasFieldOrPropertyWithValue("status", 201);
+    final Key key = response.readEntity(Key.class);
+    assertThat(key)
+        .hasFieldOrProperty("uuid");
   }
 
   @Test

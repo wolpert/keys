@@ -1,12 +1,14 @@
 package com.codeheadsystems.api.keys.v1;
 
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 /**
  * The interface Keys.
@@ -17,13 +19,14 @@ import jakarta.ws.rs.core.MediaType;
 public interface Keys {
 
   /**
-   * Create key.
+   * Create key. Should return a 201 for the newly created resources unless the user
+   * is not authenticated, or an internal error occurred.
    *
-   * @return the key
+   * @return the key in the resource.
    */
-  @PUT
+  @POST
   @Path("/")
-  Key create();
+  Response create();
 
   /**
    * Get key.
@@ -33,6 +36,16 @@ public interface Keys {
    */
   @GET
   @Path("/{uuid}")
-  Key get(@PathParam("uuid") final String uuid);
+  Key read(@PathParam("uuid") final String uuid);
+
+  /**
+   * Get key.
+   *
+   * @param uuid the uuid
+   * @return the key
+   */
+  @DELETE
+  @Path("/{uuid}")
+  Response delete(@PathParam("uuid") final String uuid);
 
 }

@@ -31,15 +31,29 @@ public class KeysServerModule {
     return Clock.systemUTC();
   }
 
+  /**
+   * Secure random secure random.
+   *
+   * @return the secure random
+   */
   @Provides
   @Singleton
   SecureRandom secureRandom() {
     return new SecureRandom();
   }
 
+  /**
+   * The interface Binder.
+   */
   @Module
   interface Binder {
 
+    /**
+     * Keys resource jersey resource.
+     *
+     * @param resource the resource
+     * @return the jersey resource
+     */
     @Binds
     @IntoSet
     JerseyResource keysResource(KeysResource resource);
