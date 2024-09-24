@@ -27,7 +27,7 @@ public class KeyCreationTest {
   void create() throws InterruptedException {
     final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/")
         .request()
-        .post(Entity.entity("test", MediaType.APPLICATION_JSON_TYPE));
+        .post(Entity.text("blah")); // we really do not need an entity.
     assertThat(response)
         .isNotNull()
         .hasFieldOrPropertyWithValue("status", 201);

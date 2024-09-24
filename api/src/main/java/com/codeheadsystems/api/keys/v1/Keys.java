@@ -14,8 +14,6 @@ import jakarta.ws.rs.core.Response;
  * The interface Keys.
  */
 @Path("/v1/keys")
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
 public interface Keys {
 
   /**
@@ -26,6 +24,7 @@ public interface Keys {
    */
   @POST
   @Path("/")
+  @Produces(MediaType.APPLICATION_JSON)
   Response create();
 
   /**
@@ -36,6 +35,7 @@ public interface Keys {
    */
   @GET
   @Path("/{uuid}")
+  @Produces(MediaType.APPLICATION_JSON)
   Key read(@PathParam("uuid") final String uuid);
 
   /**
