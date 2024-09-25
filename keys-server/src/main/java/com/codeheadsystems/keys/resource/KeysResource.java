@@ -42,10 +42,12 @@ public class KeysResource implements Keys, JerseyResource {
   }
 
   @Override
-  public Key create() {
+  public Response create() {
     LOGGER.trace("create()");
     final RawKey rawKey = keyManager.generateRawKey(256);
-    return keyConverter.from(rawKey);
+    final Key key = keyConverter.from(rawKey);
+    final URI uri = UriBuilder.fromResource(Keys.class).path(key.uuid()).build();
+    return Response.created(uri).entity(key).build();
   }
 
   @Override

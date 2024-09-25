@@ -17,7 +17,7 @@ import jakarta.ws.rs.core.Response;
 public interface Keys {
 
   /**
-   * Create key. Should return a 200 for the newly created resources unless the user
+   * Create key. Should return a 201 for the newly created resources unless the user
    * is not authenticated, or an internal error occurred.
    *
    * @return the key in the resource.
@@ -25,7 +25,7 @@ public interface Keys {
   @POST
   @Path("/")
   @Produces(MediaType.APPLICATION_JSON)
-  Key create();
+  Response create();
 
   /**
    * Get key.

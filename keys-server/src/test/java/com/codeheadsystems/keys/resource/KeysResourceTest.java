@@ -26,8 +26,9 @@ class KeysResourceTest {
   @Test
   void create() {
     when(keyManager.generateRawKey(256)).thenReturn(rawKey);
+    when(key.uuid()).thenReturn("uuid");
     when(keyConverter.from(rawKey)).thenReturn(key);
-    assertThat(keysResource.create()).isEqualTo(key);
+    assertThat(keysResource.create().getEntity()).isEqualTo(key);
   }
 
 }

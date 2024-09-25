@@ -30,11 +30,17 @@ public class KeyCreationTest {
         .post(Entity.text("blah")); // we really do not need an entity.
     assertThat(response)
         .isNotNull()
-        .hasFieldOrPropertyWithValue("status", 200);
-    System.out.println("Response: " + response.getHeaders());
+        .hasFieldOrPropertyWithValue("status", 201);
     final Key key = response.readEntity(Key.class);
     assertThat(key)
         .hasFieldOrProperty("uuid");
+
+    // finally, test location
+    final String location = response.getHeaderString("Location");
+    final Key key2 = EXT.client().target(location)
+        .request()
+        .get(Key.class);
+    assertThat(key2.uuid()).isEqualTo(key.uuid()); // TODO test the whole key.
   }
 
   @Test
