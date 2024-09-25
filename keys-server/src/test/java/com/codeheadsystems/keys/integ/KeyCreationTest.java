@@ -30,7 +30,8 @@ public class KeyCreationTest {
         .post(Entity.text("blah")); // we really do not need an entity.
     assertThat(response)
         .isNotNull()
-        .hasFieldOrPropertyWithValue("status", 201);
+        .hasFieldOrPropertyWithValue("status", 200);
+    System.out.println("Response: " + response.getHeaders());
     final Key key = response.readEntity(Key.class);
     assertThat(key)
         .hasFieldOrProperty("uuid");

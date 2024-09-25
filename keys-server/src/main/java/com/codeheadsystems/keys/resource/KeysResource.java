@@ -7,7 +7,10 @@ import com.codeheadsystems.keys.manager.KeyManager;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.server.resource.JerseyResource;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
+import java.lang.reflect.Method;
 import java.net.URI;
+import java.util.Arrays;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.slf4j.Logger;
@@ -39,22 +42,17 @@ public class KeysResource implements Keys, JerseyResource {
   }
 
   @Override
-  public Response create() {
+  public Key create() {
     LOGGER.trace("create()");
     final RawKey rawKey = keyManager.generateRawKey(256);
-    final Key key = keyConverter.from(rawKey);
-    return Response.created(URI.create("/v1/keys/" + key.uuid()))
-        .entity(key)
-        .build();
+    return keyConverter.from(rawKey);
   }
 
   @Override
-  public Response read(final String uuid) {
+  public Key read(final String uuid) {
     LOGGER.trace("get({})", uuid);
     final RawKey rawKey = keyManager.rawKey(uuid);
-    final Key key = keyConverter.from(rawKey);
-    return Response.ok(key)
-        .build();
+    return keyConverter.from(rawKey);
   }
 
   @Override
