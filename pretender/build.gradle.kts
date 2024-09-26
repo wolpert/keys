@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.liquibase.core)
     implementation(libs.jdbi.core)
     implementation(libs.jdbi.sqlobject)
+    implementation(libs.jdbi.caffeine)
     testImplementation(libs.jdbi.testing)
     testImplementation(libs.hsqldb)
 

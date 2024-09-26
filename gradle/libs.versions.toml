@@ -45,9 +45,15 @@ jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datat
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jarkarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version.ref = "rs-api" }
 javax-inject = { module = "javax.inject:javax.inject", version = "1" }
-jdbi-core = { module = "org.jdbi:jdbi3-core", version.ref = "jdbi" }
-jdbi-testing = { module = "org.jdbi:jdbi3-testing", version.ref = "jdbi" }
-jdbi-sqlobject = { module = "org.jdbi:jdbi3-sqlobject", version.ref = "jdbi" }
+jdbi-core = {module = "org.jdbi:jdbi3-core", version.ref = "jdbi" }
+jdbi-caffeine = {module = "org.jdbi:jdbi3-caffeine-cache", version.ref = "jdbi" }
+jdbi-noopcache = {module = "org.jdbi:jdbi3-noop-cache", version.ref = "jdbi" }
+jdbi-testing = {module = "org.jdbi:jdbi3-testing", version.ref = "jdbi" }
+jdbi-testcontainers = {module = "org.jdbi:jdbi3-testcontainers", version.ref = "jdbi" }
+jdbi-guava = {module = "org.jdbi:jdbi3-guava", version.ref = "jdbi" }
+jdbi-jackson2 = {module = "org.jdbi:jdbi3-jackson2", version.ref = "jdbi" }
+jdbi-postgres = {module = "org.jdbi:jdbi3-postgres", version.ref = "jdbi" }
+jdbi-sqlobject = {module = "org.jdbi:jdbi3-sqlobject", version.ref = "jdbi" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
