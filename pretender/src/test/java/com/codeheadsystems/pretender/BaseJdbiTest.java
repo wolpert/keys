@@ -22,15 +22,17 @@ import com.codeheadsystems.pretender.model.ImmutableConfiguration;
 import com.codeheadsystems.pretender.model.ImmutableDatabase;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 public abstract class BaseJdbiTest {
 
   protected Jdbi jdbi;
+  protected Configuration configuration;
 
   @BeforeEach
   void setupJdbi() {
-    final Configuration configuration = ImmutableConfiguration.builder()
+    configuration = ImmutableConfiguration.builder()
         .database(
             ImmutableDatabase.builder()
                 .url("jdbc:hsqldb:mem:" + getClass().getSimpleName() + ":" + UUID.randomUUID())

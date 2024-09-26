@@ -23,7 +23,7 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
     this.manager = new PretenderDatabaseManager(jdbi);
   }
 
-  private static Builder builder() {
+  public static Builder builder() {
     return new Builder();
   }
 
