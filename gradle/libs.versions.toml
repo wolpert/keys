@@ -3,6 +3,7 @@
 
 [versions]
 assertj = "3.26.3"
+awsSDK = "2.27.22"
 codehead-test = "1.0.10"
 codehead-metrics = "2.0.8"
 commons-codec = "1.17.1"
@@ -22,6 +23,7 @@ rs-api = "4.0.0"
 
 [libraries]
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+aws-sdk-ddb = { module = "software.amazon.awssdk:dynamodb", version.ref = "awsSDK" }
 codehead-test = { module = "com.codeheadsystems:codehead-test", version.ref = "codehead-test" }
 codehead-metrics = { module = "com.codeheadsystems:metrics", version.ref = "codehead-metrics" }
 codehead-metrics-declarative = { module = "com.codeheadsystems:metrics-declarative", version.ref = "codehead-metrics" }
