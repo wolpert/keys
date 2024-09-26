@@ -10,7 +10,6 @@ import org.immutables.value.Value;
  * The interface Key.
  */
 @Value.Immutable
-
 @JsonSerialize(as = ImmutableKey.class)
 @JsonDeserialize(builder = ImmutableKey.Builder.class)
 @JsonIgnoreProperties(ignoreUnknown = true)

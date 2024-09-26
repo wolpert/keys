@@ -4,6 +4,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.Database;
+import com.codeheadsystems.pretender.model.Metadata;
 import org.jdbi.v3.cache.caffeine.CaffeineCachePlugin;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.mapper.immutables.JdbiImmutables;
@@ -43,8 +44,8 @@ public class JdbiFactory {
 
   private void setup(final Jdbi jdbi) {
     log.info("setup({})", jdbi);
-    jdbi.getConfig(JdbiImmutables.class);
-    //.registerImmutable(Key.class)
+    jdbi.getConfig(JdbiImmutables.class)
+        .registerImmutable(Metadata.class);
     jdbi.installPlugin(new SqlObjectPlugin())
         .installPlugin(new CaffeineCachePlugin());
   }

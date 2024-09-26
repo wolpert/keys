@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.jackson.databind)
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 
