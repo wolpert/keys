@@ -33,6 +33,7 @@ public interface Database {
    *
    * @return the string
    */
+  @Value.Redacted
   String password();
 
 }
