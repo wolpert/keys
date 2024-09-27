@@ -1,6 +1,7 @@
 package com.codeheadsystems.pretender.dagger;
 
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
+import com.codeheadsystems.pretender.model.Configuration;
 import dagger.Component;
 import javax.inject.Singleton;
 
@@ -10,6 +11,16 @@ import javax.inject.Singleton;
 @Singleton
 @Component(modules = {PretenderModule.class, ConfigurationModule.class})
 public interface PretenderComponent {
+
+  /**
+   * Instance pretender component.
+   *
+   * @param configuration the configuration
+   * @return the pretender component
+   */
+  static PretenderComponent instance(final Configuration configuration) {
+    return DaggerPretenderComponent.builder().configurationModule(new ConfigurationModule(configuration)).build();
+  }
 
   /**
    * Pretender database manager pretender database manager.

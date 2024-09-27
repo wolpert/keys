@@ -26,9 +26,7 @@ class PretenderComponentTest {
 
   @BeforeEach
   void setup() {
-    component = DaggerPretenderComponent.builder()
-        .configurationModule(new ConfigurationModule(configuration()))
-        .build();
+    component = PretenderComponent.instance(configuration());
   }
 
   @Test
