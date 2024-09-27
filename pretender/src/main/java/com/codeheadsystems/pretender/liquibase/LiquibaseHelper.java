@@ -1,11 +1,13 @@
 package com.codeheadsystems.pretender.liquibase;
 
-import static org.slf4j.LoggerFactory.*;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import javax.sql.DataSource;
 import liquibase.Scope;
 import liquibase.changelog.ChangeLogParameters;
@@ -23,6 +25,7 @@ import org.slf4j.Logger;
 /**
  * The type Liquibase helper.
  */
+@Singleton
 public class LiquibaseHelper {
 
   private static final Logger log = getLogger(LiquibaseHelper.class);
@@ -30,6 +33,7 @@ public class LiquibaseHelper {
   /**
    * Instantiates a new Liquibase helper.
    */
+  @Inject
   public LiquibaseHelper() {
   }
 

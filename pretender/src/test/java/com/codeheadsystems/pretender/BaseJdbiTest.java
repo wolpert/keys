@@ -17,12 +17,12 @@
 package com.codeheadsystems.pretender;
 
 import com.codeheadsystems.pretender.factory.JdbiFactory;
+import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
 import com.codeheadsystems.pretender.model.ImmutableDatabase;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 public abstract class BaseJdbiTest {
@@ -40,7 +40,7 @@ public abstract class BaseJdbiTest {
                 .password("")
                 .build()
         ).build();
-    jdbi = new JdbiFactory(configuration).createJdbi();
+    jdbi = new JdbiFactory(configuration, new LiquibaseHelper(), true).createJdbi();
   }
 
 }

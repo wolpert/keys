@@ -1,30 +1,38 @@
 package com.codeheadsystems.pretender;
 
-import com.codeheadsystems.pretender.factory.JdbiFactory;
-import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
+import com.codeheadsystems.pretender.manager.MetadataManager;
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
-import com.codeheadsystems.pretender.model.Configuration;
-import org.jdbi.v3.core.Jdbi;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
 
 /**
  * The type Dynamo db pretender client.
  */
+@Singleton
 public class DynamoDbPretenderClient implements DynamoDbClient {
 
   private static final String SERVICE_NAME = "dynamodb";
-  private final PretenderDatabaseManager manager;
+  private final PretenderDatabaseManager pretenderDatabaseManager;
+  private final MetadataManager metadataManager;
 
-  private DynamoDbPretenderClient(final Builder builder) {
-    final Jdbi jdbi = new JdbiFactory(builder.configuration).createJdbi();
-    if (builder.runLiquibase) {
-      new LiquibaseHelper().runLiquibase(jdbi);
-    }
-    this.manager = new PretenderDatabaseManager(jdbi);
-  }
-
-  public static Builder builder() {
-    return new Builder();
+  /**
+   * Instantiates a new Dynamo db pretender client.
+   *
+   * @param pretenderDatabaseManager the pretender database manager
+   * @param metadataManager          the metadata manager
+   */
+  @Inject
+  public DynamoDbPretenderClient(final PretenderDatabaseManager pretenderDatabaseManager,
+                                 final MetadataManager metadataManager) {
+    this.metadataManager = metadataManager;
+    this.pretenderDatabaseManager = pretenderDatabaseManager;
   }
 
   @Override
@@ -37,49 +45,14 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
 
   }
 
-  /**
-   * The type Builder.
-   */
-  static class Builder {
+  @Override
+  public ListTablesResponse listTables(final ListTablesRequest listTablesRequest) throws AwsServiceException, SdkClientException {
+    return DynamoDbClient.super.listTables(listTablesRequest);
+  }
 
-    private Configuration configuration;
-    private boolean runLiquibase = true;
-
-    private Builder() {
-
-    }
-
-    /**
-     * With configuration builder.
-     *
-     * @param configuration the configuration
-     * @return the builder
-     */
-    public Builder withConfiguration(Configuration configuration) {
-      this.configuration = configuration;
-      return this;
-    }
-
-    /**
-     * With run liquibase builder.
-     *
-     * @param runLiquibase the run liquibase
-     * @return the builder
-     */
-    public Builder withRunLiquibase(boolean runLiquibase) {
-      this.runLiquibase = runLiquibase;
-      return this;
-    }
-
-    /**
-     * Build dynamo db pretender client.
-     *
-     * @return the dynamo db pretender client
-     */
-    public DynamoDbPretenderClient build() {
-      return new DynamoDbPretenderClient(this);
-    }
-
+  @Override
+  public CreateTableResponse createTable(final CreateTableRequest createTableRequest) throws AwsServiceException, SdkClientException {
+    return DynamoDbClient.super.createTable(createTableRequest);
   }
 
 }

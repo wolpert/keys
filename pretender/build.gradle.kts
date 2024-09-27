@@ -13,6 +13,11 @@ dependencies {
 
     implementation(libs.aws.sdk.ddb)
 
+    // IOC
+    implementation(libs.javax.inject)
+    implementation(libs.dagger)
+    annotationProcessor(libs.dagger.compiler)
+
     // Database
     implementation(libs.liquibase.core)
     implementation(libs.jdbi.core)
