@@ -7,13 +7,13 @@ import javax.inject.Singleton;
  * The type Meta data converter.
  */
 @Singleton
-public class MetaDataConverter {
+public class PdbTableConverter {
 
   /**
    * Instantiates a new Meta data converter.
    */
   @Inject
-  public MetaDataConverter() {
+  public PdbTableConverter() {
   }
 
 }

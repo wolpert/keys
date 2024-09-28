@@ -1,6 +1,6 @@
 package com.codeheadsystems.pretender;
 
-import com.codeheadsystems.pretender.manager.MetadataManager;
+import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -20,18 +20,18 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
 
   private static final String SERVICE_NAME = "dynamodb";
   private final PretenderDatabaseManager pretenderDatabaseManager;
-  private final MetadataManager metadataManager;
+  private final PdbTableManager pdbTableManager;
 
   /**
    * Instantiates a new Dynamo db pretender client.
    *
    * @param pretenderDatabaseManager the pretender database manager
-   * @param metadataManager          the metadata manager
+   * @param pdbTableManager          the metadata manager
    */
   @Inject
   public DynamoDbPretenderClient(final PretenderDatabaseManager pretenderDatabaseManager,
-                                 final MetadataManager metadataManager) {
-    this.metadataManager = metadataManager;
+                                 final PdbTableManager pdbTableManager) {
+    this.pdbTableManager = pdbTableManager;
     this.pretenderDatabaseManager = pretenderDatabaseManager;
   }
 

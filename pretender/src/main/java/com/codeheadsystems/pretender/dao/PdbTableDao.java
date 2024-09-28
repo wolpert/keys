@@ -6,14 +6,14 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 /**
  * The interface Metadata dao.
  */
-public interface MetadataDao {
+public interface PdbTableDao {
 
   /**
    * List table names list.
    *
    * @return the list
    */
-  @SqlQuery("select ID from PDB_METADATA order by ID asc")
+  @SqlQuery("select NAME from PDB_TABLE order by ID asc")
   List<String> listTableNames();
 
 }

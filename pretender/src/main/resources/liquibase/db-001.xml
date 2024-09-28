@@ -28,8 +28,8 @@
     ~
     -->
     <changeSet id="2024-09-26-01" author="wolpert">
-        <createTable tableName="PDB_METADATA">
-            <column name="ID" type="varchar(1024)">
+        <createTable tableName="PDB_TABLE">
+            <column name="NAME" type="varchar(1024)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="CREATE_DATE" type="timestamp">

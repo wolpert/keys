@@ -2,7 +2,7 @@ package com.codeheadsystems.pretender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.codeheadsystems.pretender.manager.MetadataManager;
+import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class DynamoDbPretenderClientTest {
 
   @Mock private PretenderDatabaseManager pretenderDatabaseManager;
-  @Mock private MetadataManager metadataManager;
+  @Mock private PdbTableManager pdbTableManager;
 
   private DynamoDbPretenderClient client;
 
@@ -33,7 +33,7 @@ class DynamoDbPretenderClientTest {
                 .password("")
                 .build()
         ).build();
-    client = new DynamoDbPretenderClient(pretenderDatabaseManager, metadataManager);
+    client = new DynamoDbPretenderClient(pretenderDatabaseManager, pdbTableManager);
   }
 
   @AfterEach

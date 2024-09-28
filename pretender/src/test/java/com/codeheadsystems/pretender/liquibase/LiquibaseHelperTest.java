@@ -13,7 +13,7 @@ class LiquibaseHelperTest extends BaseJdbiTest {
   void runLiquibase() {
     LiquibaseHelper helper = new LiquibaseHelper();
     helper.runLiquibase(jdbi);
-    final List<Map<String, Object>> list = jdbi.withHandle(handle -> handle.createQuery("select * from PDB_METADATA").mapToMap().list());
+    final List<Map<String, Object>> list = jdbi.withHandle(handle -> handle.createQuery("select * from PDB_TABLE").mapToMap().list());
     assertThat(list).isEmpty();
   }
 

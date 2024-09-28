@@ -1,6 +1,6 @@
 package com.codeheadsystems.pretender.dagger;
 
-import com.codeheadsystems.pretender.dao.MetadataDao;
+import com.codeheadsystems.pretender.dao.PdbTableDao;
 import com.codeheadsystems.pretender.factory.JdbiFactory;
 import dagger.Module;
 import dagger.Provides;
@@ -33,8 +33,8 @@ public class PretenderModule {
    */
   @Provides
   @Singleton
-  public MetadataDao metadataDao(final Jdbi jdbi) {
-    return jdbi.onDemand(MetadataDao.class);
+  public PdbTableDao metadataDao(final Jdbi jdbi) {
+    return jdbi.onDemand(PdbTableDao.class);
   }
 
   /**
