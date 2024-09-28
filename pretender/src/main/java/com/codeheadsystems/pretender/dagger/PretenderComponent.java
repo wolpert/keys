@@ -1,6 +1,6 @@
 package com.codeheadsystems.pretender.dagger;
 
-import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
+import com.codeheadsystems.pretender.DynamoDbPretenderClient;
 import com.codeheadsystems.pretender.model.Configuration;
 import dagger.Component;
 import javax.inject.Singleton;
@@ -9,7 +9,7 @@ import javax.inject.Singleton;
  * The interface Pretender component.
  */
 @Singleton
-@Component(modules = {PretenderModule.class, ConfigurationModule.class})
+@Component(modules = {PretenderModule.class, ConfigurationModule.class, CommonModule.class})
 public interface PretenderComponent {
 
   /**
@@ -27,6 +27,5 @@ public interface PretenderComponent {
    *
    * @return the pretender database manager
    */
-  PretenderDatabaseManager pretenderDatabaseManager();
-
+  DynamoDbPretenderClient dynamoDbPretenderClient();
 }

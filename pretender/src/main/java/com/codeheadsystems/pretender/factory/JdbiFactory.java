@@ -6,7 +6,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.Database;
-import com.codeheadsystems.pretender.model.Metadata;
+import com.codeheadsystems.pretender.model.PdbTable;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -64,7 +64,7 @@ public class JdbiFactory {
   private void setup(final Jdbi jdbi) {
     log.info("setup({})", jdbi);
     jdbi.getConfig(JdbiImmutables.class)
-        .registerImmutable(Metadata.class);
+        .registerImmutable(PdbTable.class);
     jdbi.installPlugin(new SqlObjectPlugin())
         .installPlugin(new CaffeineCachePlugin());
     jdbi.setSqlLogger(new Slf4JSqlLogger());

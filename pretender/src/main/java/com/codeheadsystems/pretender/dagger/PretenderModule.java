@@ -26,7 +26,7 @@ public class PretenderModule {
   }
 
   /**
-   * Metadata dao metadata dao.
+   * PdbTable dao metadata dao.
    *
    * @param jdbi the jdbi
    * @return the metadata dao

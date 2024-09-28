@@ -2,6 +2,7 @@ package com.codeheadsystems.pretender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codeheadsystems.pretender.converter.PdbTableConverter;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
 import com.codeheadsystems.pretender.model.Configuration;
@@ -20,20 +21,13 @@ class DynamoDbPretenderClientTest {
 
   @Mock private PretenderDatabaseManager pretenderDatabaseManager;
   @Mock private PdbTableManager pdbTableManager;
+  @Mock private PdbTableConverter pdbTableConverter;
 
   private DynamoDbPretenderClient client;
 
   @BeforeEach
   void setup() {
-    Configuration CONFIGURATION = ImmutableConfiguration.builder()
-        .database(
-            ImmutableDatabase.builder()
-                .url("jdbc:hsqldb:mem:DynamoDbPretenderClientTest:" + UUID.randomUUID())
-                .username("SA")
-                .password("")
-                .build()
-        ).build();
-    client = new DynamoDbPretenderClient(pretenderDatabaseManager, pdbTableManager);
+    client = new DynamoDbPretenderClient(pretenderDatabaseManager, pdbTableManager, pdbTableConverter);
   }
 
   @AfterEach

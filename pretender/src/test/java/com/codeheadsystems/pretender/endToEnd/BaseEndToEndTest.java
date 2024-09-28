@@ -1,17 +1,15 @@
-package com.codeheadsystems.pretender.dagger;
+package com.codeheadsystems.pretender.endToEnd;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import com.codeheadsystems.pretender.dagger.PretenderComponent;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
 import com.codeheadsystems.pretender.model.ImmutableDatabase;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
-class PretenderComponentTest {
+public abstract class BaseEndToEndTest {
 
-  private PretenderComponent component;
+  protected PretenderComponent component;
 
   private Configuration configuration() {
     return ImmutableConfiguration.builder()
@@ -25,13 +23,8 @@ class PretenderComponentTest {
   }
 
   @BeforeEach
-  void setup() {
+  void setupComponent() {
     component = PretenderComponent.instance(configuration());
-  }
-
-  @Test
-  void testCreateManager() {
-    assertThat(component.dynamoDbPretenderClient()).isNotNull();
   }
 
 }
