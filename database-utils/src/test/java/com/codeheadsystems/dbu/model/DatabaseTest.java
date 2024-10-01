@@ -1,7 +1,8 @@
-package com.codeheadsystems.pretender.model;
+package com.codeheadsystems.dbu.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codeheadsystems.dbu.model.Database;
 import org.junit.jupiter.api.Test;
 
 class DatabaseTest {

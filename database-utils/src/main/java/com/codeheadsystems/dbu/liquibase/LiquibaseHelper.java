@@ -1,4 +1,4 @@
-package com.codeheadsystems.pretender.liquibase;
+package com.codeheadsystems.dbu.liquibase;
 
 import static org.slf4j.LoggerFactory.getLogger;
 

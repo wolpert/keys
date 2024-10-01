@@ -1,5 +1,6 @@
 package com.codeheadsystems.pretender.model;
 
+import com.codeheadsystems.dbu.model.Database;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;

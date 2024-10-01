@@ -18,11 +18,12 @@ package com.codeheadsystems.pretender;
 
 import static com.codeheadsystems.pretender.dagger.PretenderModule.LIQUIBASE_SETUP_XML;
 
-import com.codeheadsystems.pretender.factory.JdbiFactory;
-import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
+import com.codeheadsystems.dbu.factory.JdbiFactory;
+import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
+import com.codeheadsystems.dbu.model.ImmutableDatabase;
+import com.codeheadsystems.pretender.dagger.PretenderModule;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
-import com.codeheadsystems.pretender.model.ImmutableDatabase;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +43,7 @@ public abstract class BaseJdbiTest {
                 .password("")
                 .build()
         ).build();
-    jdbi = new JdbiFactory(configuration.database()).createJdbi();
+    jdbi = new JdbiFactory(configuration.database(), new PretenderModule().immutableClasses()).createJdbi();
     new LiquibaseHelper().runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
   }
 

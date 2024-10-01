@@ -7,17 +7,12 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":database-utils"))
     implementation(libs.jackson.databind)
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 
-    implementation(libs.aws.sdk.ddb)
-
     // IOC
     implementation(libs.javax.inject)
-    implementation(libs.dagger)
-    annotationProcessor(libs.dagger.compiler)
 
     // Database
     implementation(libs.liquibase.core)

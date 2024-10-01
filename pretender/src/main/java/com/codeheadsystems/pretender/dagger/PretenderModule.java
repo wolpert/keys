@@ -1,10 +1,13 @@
 package com.codeheadsystems.pretender.dagger;
 
 import com.codeheadsystems.pretender.dao.PdbTableDao;
-import com.codeheadsystems.pretender.factory.JdbiFactory;
-import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
+import com.codeheadsystems.dbu.factory.JdbiFactory;
+import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
+import com.codeheadsystems.pretender.model.PdbTable;
 import dagger.Module;
 import dagger.Provides;
+import java.util.Set;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import org.jdbi.v3.core.Jdbi;
 
@@ -33,6 +36,18 @@ public class PretenderModule {
     final Jdbi jdbi = factory.createJdbi();
     liquibaseHelper.runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
     return jdbi;
+  }
+
+  /**
+   * Immutable classes set.
+   *
+   * @return the set
+   */
+  @Provides
+  @Singleton
+  @Named(JdbiFactory.IMMUTABLES)
+  public Set<Class<?>> immutableClasses() {
+    return Set.of(PdbTable.class);
   }
 
   /**

@@ -1,4 +1,4 @@
-package com.codeheadsystems.pretender.model;
+package com.codeheadsystems.dbu.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -41,9 +41,9 @@ public interface Database {
    *
    * @return the boolean
    */
-  @Value.Default
+  @Value.Derived
   default boolean usePostgresql() {
-    return false;
+    return url().startsWith("jdbc:postgresql");
   }
 
 }
