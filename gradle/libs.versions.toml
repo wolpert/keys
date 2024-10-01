@@ -18,6 +18,7 @@ junit-jupiter = "5.11.1"
 liquibase = '4.29.2'
 micrometer = '1.13.4'
 mokito = '5.13.0'
+pgjdbc = '42.7.4'
 slf4j = '2.0.16'
 rs-api = "4.0.0"
 
@@ -62,9 +63,11 @@ liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liqui
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mokito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mokito" }
-
+pgjdbc = { module = "org.postgresql:postgresql", version.ref = "pgjdbc" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 [bundles]
+jdbi = ["jdbi-core", "jdbi-caffeine", "jdbi-noopcache", "jdbi-jackson2", "jdbi-postgres", "jdbi-sqlobject", "pgjdbc"]
+jdbi-testing = ["jdbi-testing", "jdbi-testcontainers"]
 testing = ["mockito-core", "mockito-junit-jupiter", "assertj", "junit-jupiter", "junit-jupiter-api", "junit-jupiter-engine", "junit-jupiter-params", "codehead-test"]
 logging = ["slf4j-api"]

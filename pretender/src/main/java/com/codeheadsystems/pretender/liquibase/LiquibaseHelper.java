@@ -43,7 +43,8 @@ public class LiquibaseHelper {
    * @param dataSource    the data source
    * @param changeLogFile the change log file
    */
-  public void runLiquibase(final DataSource dataSource, final String changeLogFile) {
+  public void runLiquibase(final DataSource dataSource,
+                           final String changeLogFile) {
     try {
       runLiquibase(dataSource.getConnection(), changeLogFile);
     } catch (SQLException e) {
@@ -54,12 +55,14 @@ public class LiquibaseHelper {
   /**
    * Run liquibase.
    *
-   * @param jdbi the jdbi
+   * @param jdbi          the jdbi
+   * @param changeLogFile the change log file
    */
-  public void runLiquibase(final Jdbi jdbi) {
+  public void runLiquibase(final Jdbi jdbi,
+                           final String changeLogFile) {
     jdbi.useHandle(handle -> {
       try (final Connection connection = handle.getConnection()) {
-        new LiquibaseHelper().runLiquibase(connection, "liquibase/liquibase-setup.xml");
+        new LiquibaseHelper().runLiquibase(connection, changeLogFile);
         log.info("runLiquibase(): complete");
       } catch (RuntimeException | SQLException e) {
         throw new IllegalStateException("Database update failure", e);
@@ -95,7 +98,6 @@ public class LiquibaseHelper {
 
         //commandScope.setOutput(new WriterOutputStream(new PrintWriter(System.out), GlobalConfiguration.OUTPUT_FILE_ENCODING.getCurrentValue()));
         commandScope.execute();
-
         return null;
       });
     } catch (Exception e) {

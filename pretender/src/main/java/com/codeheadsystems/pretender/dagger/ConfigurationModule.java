@@ -1,6 +1,7 @@
 package com.codeheadsystems.pretender.dagger;
 
 import com.codeheadsystems.pretender.model.Configuration;
+import com.codeheadsystems.pretender.model.Database;
 import dagger.Module;
 import dagger.Provides;
 import javax.inject.Named;
@@ -52,6 +53,18 @@ public class ConfigurationModule {
   @Singleton
   public Configuration configuration() {
     return configuration;
+  }
+
+  /**
+   * Database database.
+   *
+   * @param configuration the configuration
+   * @return the database
+   */
+  @Provides
+  @Singleton
+  public Database database(final Configuration configuration) {
+    return configuration.database();
   }
 
   /**

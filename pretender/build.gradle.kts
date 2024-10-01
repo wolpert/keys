@@ -20,10 +20,8 @@ dependencies {
 
     // Database
     implementation(libs.liquibase.core)
-    implementation(libs.jdbi.core)
-    implementation(libs.jdbi.sqlobject)
-    implementation(libs.jdbi.caffeine)
-    testImplementation(libs.jdbi.testing)
+    implementation(libs.bundles.jdbi)
+    testImplementation(libs.bundles.jdbi.testing)
     testImplementation(libs.hsqldb)
 
     testAnnotationProcessor(libs.immutables.value)

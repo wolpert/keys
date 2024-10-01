@@ -36,4 +36,14 @@ public interface Database {
   @Value.Redacted
   String password();
 
+  /**
+   * Use postgresql boolean.
+   *
+   * @return the boolean
+   */
+  @Value.Default
+  default boolean usePostgresql() {
+    return false;
+  }
+
 }

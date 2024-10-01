@@ -16,6 +16,8 @@
 
 package com.codeheadsystems.pretender;
 
+import static com.codeheadsystems.pretender.dagger.PretenderModule.LIQUIBASE_SETUP_XML;
+
 import com.codeheadsystems.pretender.factory.JdbiFactory;
 import com.codeheadsystems.pretender.liquibase.LiquibaseHelper;
 import com.codeheadsystems.pretender.model.Configuration;
@@ -40,7 +42,8 @@ public abstract class BaseJdbiTest {
                 .password("")
                 .build()
         ).build();
-    jdbi = new JdbiFactory(configuration, new LiquibaseHelper(), true).createJdbi();
+    jdbi = new JdbiFactory(configuration.database()).createJdbi();
+    new LiquibaseHelper().runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
   }
 
 }
