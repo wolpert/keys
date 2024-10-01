@@ -11,6 +11,7 @@ plugins {
 dependencies {
     implementation(project(":api"))
     implementation(project(":server-base"))
+    implementation(project(":database-utils"))
     implementation(libs.dropwizard.core)
     implementation(libs.commons.codec)
     testImplementation(libs.dropwizard.testing)

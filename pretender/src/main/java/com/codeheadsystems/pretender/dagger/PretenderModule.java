@@ -1,9 +1,9 @@
 package com.codeheadsystems.pretender.dagger;
 
-import com.codeheadsystems.pretender.dao.PdbTableDao;
+import com.codeheadsystems.pretender.dao.PdbMetadataDao;
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import dagger.Module;
 import dagger.Provides;
 import java.util.Set;
@@ -31,7 +31,7 @@ public class PretenderModule {
    */
   @Provides
   @Singleton
-  public Jdbi jebi(final JdbiFactory factory,
+  public Jdbi jdbi(final JdbiFactory factory,
                    final LiquibaseHelper liquibaseHelper) {
     final Jdbi jdbi = factory.createJdbi();
     liquibaseHelper.runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
@@ -47,19 +47,19 @@ public class PretenderModule {
   @Singleton
   @Named(JdbiFactory.IMMUTABLES)
   public Set<Class<?>> immutableClasses() {
-    return Set.of(PdbTable.class);
+    return Set.of(PdbMetadata.class);
   }
 
   /**
-   * PdbTable dao metadata dao.
+   * PdbMetadata dao metadata dao.
    *
    * @param jdbi the jdbi
    * @return the metadata dao
    */
   @Provides
   @Singleton
-  public PdbTableDao metadataDao(final Jdbi jdbi) {
-    return jdbi.onDemand(PdbTableDao.class);
+  public PdbMetadataDao metadataDao(final Jdbi jdbi) {
+    return jdbi.onDemand(PdbMetadataDao.class);
   }
 
   /**

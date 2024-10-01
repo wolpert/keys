@@ -1,6 +1,6 @@
 package com.codeheadsystems.pretender.dao;
 
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.util.List;
 import java.util.Optional;
 import org.jdbi.v3.sqlobject.customizer.Bind;
@@ -9,9 +9,9 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 /**
- * The interface PdbTable dao.
+ * The interface PdbMetadata dao.
  */
-public interface PdbTableDao {
+public interface PdbMetadataDao {
 
   /**
    * List table names list.
@@ -28,16 +28,16 @@ public interface PdbTableDao {
    * @return the table
    */
   @SqlQuery("select * from PDB_TABLE where NAME = :name")
-  Optional<PdbTable> getTable(@Bind("name") String name);
+  Optional<PdbMetadata> getTable(@Bind("name") String name);
 
   /**
    * Insert boolean.
    *
-   * @param pdbTable the pdb table
+   * @param pdbMetadata the pdb table
    * @return the boolean
    */
   @SqlUpdate("insert into PDB_TABLE (NAME, HASH_KEY, SORT_KEY, CREATE_DATE) values (:name, :hashKey, :sortKey, :createDate)")
-  boolean insert(@BindPojo PdbTable pdbTable);
+  boolean insert(@BindPojo PdbMetadata pdbMetadata);
 
   /**
    * Delete boolean.

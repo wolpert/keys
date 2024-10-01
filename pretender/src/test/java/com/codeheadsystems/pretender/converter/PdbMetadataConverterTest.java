@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.when;
 
-import com.codeheadsystems.pretender.model.ImmutablePdbTable;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.model.ImmutablePdbMetadata;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -20,7 +20,7 @@ import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
 @ExtendWith(MockitoExtension.class)
-class PdbTableConverterTest {
+class PdbMetadataConverterTest {
 
   private static final Instant NOW = Instant.now();
 
@@ -80,13 +80,13 @@ class PdbTableConverterTest {
 
   @Test
   public void testFromPdbTable() {
-    final PdbTable pdbTable = ImmutablePdbTable.builder()
+    final PdbMetadata pdbMetadata = ImmutablePdbMetadata.builder()
         .name("tableName")
         .hashKey("p_hashKey")
         .sortKey("p_sortKey")
         .createDate(NOW)
         .build();
-    final TableDescription tableDescription = converter.fromPdbTable(pdbTable);
+    final TableDescription tableDescription = converter.fromPdbTable(pdbMetadata);
     assertThat(tableDescription)
         .hasFieldOrPropertyWithValue("tableName", "tableName")
         .hasFieldOrPropertyWithValue("keySchema", List.of(
@@ -97,12 +97,12 @@ class PdbTableConverterTest {
 
   @Test
   public void testFromPdbTable_noSort() {
-    final PdbTable pdbTable = ImmutablePdbTable.builder()
+    final PdbMetadata pdbMetadata = ImmutablePdbMetadata.builder()
         .name("tableName")
         .hashKey("p_hashKey")
         .createDate(NOW)
         .build();
-    final TableDescription tableDescription = converter.fromPdbTable(pdbTable);
+    final TableDescription tableDescription = converter.fromPdbTable(pdbMetadata);
     assertThat(tableDescription)
         .hasFieldOrPropertyWithValue("tableName", "tableName")
         .hasFieldOrPropertyWithValue("keySchema", List.of(

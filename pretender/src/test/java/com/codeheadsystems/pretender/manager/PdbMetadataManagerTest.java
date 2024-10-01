@@ -6,9 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.when;
 
-import com.codeheadsystems.pretender.dao.PdbTableDao;
-import com.codeheadsystems.pretender.model.ImmutablePdbTable;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.dao.PdbMetadataDao;
+import com.codeheadsystems.pretender.model.ImmutablePdbMetadata;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -22,17 +22,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PdbTableManagerTest {
+class PdbMetadataManagerTest {
 
 
-  private static final PdbTable PDB_TABLE = ImmutablePdbTable.builder()
+  private static final PdbMetadata PDB_TABLE = ImmutablePdbMetadata.builder()
       .name("name")
       .hashKey("hashKey")
       .sortKey("sortKey")
       .createDate(Instant.now().truncatedTo(ChronoUnit.MILLIS))
       .build();
 
-  @Mock private PdbTableDao dao;
+  @Mock private PdbMetadataDao dao;
   @Mock private StatementContext context;
 
   @InjectMocks private PdbTableManager manager;

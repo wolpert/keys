@@ -1,7 +1,7 @@
 package com.codeheadsystems.pretender.converter;
 
-import com.codeheadsystems.pretender.model.ImmutablePdbTable;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.model.ImmutablePdbMetadata;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
@@ -38,7 +38,7 @@ public class PdbTableConverter {
    * @param createTableRequest the create table request
    * @return the pdb table
    */
-  public PdbTable convert(final CreateTableRequest createTableRequest) {
+  public PdbMetadata convert(final CreateTableRequest createTableRequest) {
     final String hashKey = createTableRequest.keySchema().stream()
         .filter(ks -> ks.keyType().equals(KeyType.HASH))
         .findFirst()
@@ -48,7 +48,7 @@ public class PdbTableConverter {
         .filter(ks -> ks.keyType().equals(KeyType.RANGE))
         .findFirst()
         .map(KeySchemaElement::attributeName);
-    return ImmutablePdbTable.builder()
+    return ImmutablePdbMetadata.builder()
         .name(createTableRequest.tableName())
         .hashKey(hashKey)
         .sortKey(sortKey)
@@ -59,17 +59,17 @@ public class PdbTableConverter {
   /**
    * From pdb table table description.
    *
-   * @param pdbTable the pdb table
+   * @param pdbMetadata the pdb table
    * @return the table description
    */
-  public TableDescription fromPdbTable(PdbTable pdbTable) {
-    final KeySchemaElement hashKey = KeySchemaElement.builder().attributeName(pdbTable.hashKey()).keyType(KeyType.HASH).build();
-    final Optional<KeySchemaElement> sortKey = pdbTable.sortKey().map(sk -> KeySchemaElement.builder().attributeName(sk).keyType(KeyType.RANGE).build());
+  public TableDescription fromPdbTable(PdbMetadata pdbMetadata) {
+    final KeySchemaElement hashKey = KeySchemaElement.builder().attributeName(pdbMetadata.hashKey()).keyType(KeyType.HASH).build();
+    final Optional<KeySchemaElement> sortKey = pdbMetadata.sortKey().map(sk -> KeySchemaElement.builder().attributeName(sk).keyType(KeyType.RANGE).build());
     final List<KeySchemaElement> keySchema = Stream.of(hashKey, sortKey.orElse(null))
         .filter(Objects::nonNull)
         .toList();
     return TableDescription.builder()
-        .tableName(pdbTable.name())
+        .tableName(pdbMetadata.name())
         .keySchema(keySchema)
         .build();
   }

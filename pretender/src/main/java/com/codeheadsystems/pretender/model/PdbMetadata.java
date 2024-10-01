@@ -5,10 +5,10 @@ import java.util.Optional;
 import org.immutables.value.Value;
 
 /**
- * The interface PdbTable.
+ * The interface PdbMetadata.
  */
 @Value.Immutable
-public interface PdbTable {
+public interface PdbMetadata {
 
   /**
    * Name string.

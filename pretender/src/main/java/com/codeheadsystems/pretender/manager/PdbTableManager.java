@@ -1,7 +1,7 @@
 package com.codeheadsystems.pretender.manager;
 
-import com.codeheadsystems.pretender.dao.PdbTableDao;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.dao.PdbMetadataDao;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.Optional;
@@ -12,46 +12,46 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The type PdbTable manager.
+ * The type PdbMetadata manager.
  */
 @Singleton
 public class PdbTableManager {
 
   private static final Logger log = LoggerFactory.getLogger(PdbTableManager.class);
 
-  private final PdbTableDao pdbTableDao;
+  private final PdbMetadataDao pdbMetadataDao;
 
   /**
-   * Instantiates a new PdbTable manager.
+   * Instantiates a new PdbMetadata manager.
    *
-   * @param pdbTableDao the dao
+   * @param pdbMetadataDao the dao
    */
   @Inject
-  public PdbTableManager(final PdbTableDao pdbTableDao) {
-    log.info("PdbTableManager({})", pdbTableDao);
-    this.pdbTableDao = pdbTableDao;
+  public PdbTableManager(final PdbMetadataDao pdbMetadataDao) {
+    log.info("PdbTableManager({})", pdbMetadataDao);
+    this.pdbMetadataDao = pdbMetadataDao;
   }
 
   /**
    * Insert pdb table boolean.
    *
-   * @param pdbTable the pdb table
+   * @param pdbMetadata the pdb table
    * @return the boolean
    */
-  public boolean insertPdbTable(final PdbTable pdbTable) {
-    log.trace("insertPdbTable({})", pdbTable);
-    if (getPdbTable(pdbTable.name()).isPresent()) {
-      log.warn("Table already exists: {}", pdbTable);
+  public boolean insertPdbTable(final PdbMetadata pdbMetadata) {
+    log.trace("insertPdbTable({})", pdbMetadata);
+    if (getPdbTable(pdbMetadata.name()).isPresent()) {
+      log.warn("Table already exists: {}", pdbMetadata);
       return false;
     }
     try {
-      return pdbTableDao.insert(pdbTable);
+      return pdbMetadataDao.insert(pdbMetadata);
     } catch (UnableToExecuteStatementException e) {
       if (e.getCause() instanceof SQLIntegrityConstraintViolationException) {
-        log.warn("Table already exists: {}", pdbTable);
+        log.warn("Table already exists: {}", pdbMetadata);
         return false;
       } else {
-        log.error("Unable to insert table: {}", pdbTable, e);
+        log.error("Unable to insert table: {}", pdbMetadata, e);
         throw e;
       }
     }
@@ -63,9 +63,9 @@ public class PdbTableManager {
    * @param name the name
    * @return the pdb table
    */
-  public Optional<PdbTable> getPdbTable(final String name) {
+  public Optional<PdbMetadata> getPdbTable(final String name) {
     log.trace("getPdbTable({})", name);
-    return pdbTableDao.getTable(name);
+    return pdbMetadataDao.getTable(name);
   }
 
   /**
@@ -76,7 +76,7 @@ public class PdbTableManager {
    */
   public boolean deletePdbTable(final String name) {
     log.trace("deletePdbTable({})", name);
-    return pdbTableDao.delete(name);
+    return pdbMetadataDao.delete(name);
   }
 
   /**
@@ -86,6 +86,6 @@ public class PdbTableManager {
    */
   public List<String> listPdbTables() {
     log.trace("listPdbTables()");
-    return pdbTableDao.listTableNames();
+    return pdbMetadataDao.listTableNames();
   }
 }

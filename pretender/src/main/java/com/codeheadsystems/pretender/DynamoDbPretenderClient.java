@@ -3,7 +3,7 @@ package com.codeheadsystems.pretender;
 import com.codeheadsystems.pretender.converter.PdbTableConverter;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
-import com.codeheadsystems.pretender.model.PdbTable;
+import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -69,7 +69,7 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
 
   @Override
   public CreateTableResponse createTable(final CreateTableRequest createTableRequest) throws AwsServiceException, SdkClientException {
-    final PdbTable table = pdbTableConverter.convert(createTableRequest);
+    final PdbMetadata table = pdbTableConverter.convert(createTableRequest);
     if (pdbTableManager.insertPdbTable(table)) {
       return CreateTableResponse.builder().tableDescription(pdbTableConverter.fromPdbTable(table)).build();
     } else {
@@ -80,7 +80,7 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
   @Override
   public DeleteTableResponse deleteTable(final DeleteTableRequest deleteTableRequest) throws AwsServiceException, SdkClientException {
     final String tableName = deleteTableRequest.tableName();
-    final Optional<PdbTable> pdbTable = pdbTableManager.getPdbTable(tableName);
+    final Optional<PdbMetadata> pdbTable = pdbTableManager.getPdbTable(tableName);
     if (pdbTable.isEmpty()) {
       throw ResourceNotFoundException.builder().message("Table not found").build();
     }
