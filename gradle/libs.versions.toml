@@ -68,6 +68,6 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 [bundles]
 jdbi = ["jdbi-core", "jdbi-caffeine", "jdbi-noopcache", "jdbi-jackson2", "jdbi-postgres", "jdbi-sqlobject", "pgjdbc"]
-jdbi-testing = ["jdbi-testing", "jdbi-testcontainers"]
+jdbi-testing = ["jdbi-testing"]
 testing = ["mockito-core", "mockito-junit-jupiter", "assertj", "junit-jupiter", "junit-jupiter-api", "junit-jupiter-engine", "junit-jupiter-params", "codehead-test"]
 logging = ["slf4j-api"]
