@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import com.codeheadsystems.api.keys.v1.Key;
 import com.codeheadsystems.keys.exception.InvalidKeyException;
 import com.codeheadsystems.keys.model.RawKey;
+import com.codeheadsystems.keys.utilities.KeyUtilities;
 import java.util.UUID;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -38,8 +39,8 @@ class KeyConverterTest {
     final RawKey result = keyConverter.to(key);
     assertThat(result)
         .isNotNull()
-        .hasFieldOrPropertyWithValue("uuid", UUID)
-        .hasFieldOrPropertyWithValue("key", KEY);
+        .hasFieldOrPropertyWithValue("uuid", UUID.toString())
+        .hasFieldOrPropertyWithValue("key", "0102030405060708");
   }
 
   @Test

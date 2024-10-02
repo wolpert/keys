@@ -33,12 +33,11 @@ public class KeyConverter {
    * @return the key
    */
   public Key from(final RawKey rawKey) {
-    final String hex = KeyUtilities.encode.apply(rawKey.key());
-    return ImmutableKey.builder().key(hex).uuid(rawKey.uuid().toString()).build();
+    return ImmutableKey.builder().key(rawKey.key()).uuid(rawKey.uuid()).build();
   }
 
   /**
-   * To raw key.
+   * To raw key. Note we do this to ensure the key can be decoded.
    *
    * @param key the key
    * @return the raw key

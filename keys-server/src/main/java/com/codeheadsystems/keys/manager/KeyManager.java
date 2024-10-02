@@ -1,5 +1,6 @@
 package com.codeheadsystems.keys.manager;
 
+import com.codeheadsystems.keys.dao.RawKeyDao;
 import com.codeheadsystems.keys.model.ImmutableRawKey;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.metrics.declarative.Metrics;
@@ -20,14 +21,18 @@ public class KeyManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(KeyManager.class);
 
   private final SecureRandom secureRandom;
+  private final RawKeyDao rawKeyDao;
 
   /**
    * Instantiates a new Key manager.
    *
    * @param secureRandom the secure random
+   * @param rawKeyDao    the raw key dao
    */
   @Inject
-  public KeyManager(final SecureRandom secureRandom) {
+  public KeyManager(final SecureRandom secureRandom,
+                    final RawKeyDao rawKeyDao) {
+    this.rawKeyDao = rawKeyDao;
     LOGGER.info("KeyManager({})", secureRandom);
     this.secureRandom = secureRandom;
   }
@@ -59,7 +64,7 @@ public class KeyManager {
   public RawKey rawKey(String uuid) {
     LOGGER.trace("rawKey({})", uuid);
     final RawKey rawKey = generateRawKey(256);
-    return ImmutableRawKey.copyOf(rawKey).withUuid(UUID.fromString(uuid));
+    return ImmutableRawKey.copyOf(rawKey).withUuid(uuid);
   }
 
 }

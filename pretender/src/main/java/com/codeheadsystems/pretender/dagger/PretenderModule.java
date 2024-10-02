@@ -36,19 +36,19 @@ public class PretenderModule {
     final Jdbi jdbi = factory.createJdbi();
     liquibaseHelper.runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
     return jdbi;
-  }
+    }
 
-  /**
-   * Immutable classes set.
-   *
-   * @return the set
-   */
-  @Provides
-  @Singleton
-  @Named(JdbiFactory.IMMUTABLES)
-  public Set<Class<?>> immutableClasses() {
-    return Set.of(PdbMetadata.class);
-  }
+    /**
+     * Immutable classes set.
+     *
+     * @return the set
+     */
+    @Provides
+    @Singleton
+    @Named(JdbiFactory.IMMUTABLES)
+    public Set<Class<?>> immutableClasses() {
+      return Set.of(PdbMetadata.class);
+    }
 
   /**
    * PdbMetadata dao metadata dao.

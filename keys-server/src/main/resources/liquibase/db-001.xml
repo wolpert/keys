@@ -32,10 +32,10 @@
             <column name="UUID" type="varchar(256)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="CREATE_DATE" type="timestamp">
+            <column name="KEY" type="varchar(256)">
                 <constraints nullable="false"/>
             </column>
-            <column name="KEY" type="varchar(256)">
+            <column name="SIZE" type="integer">
                 <constraints nullable="false"/>
             </column>
         </createTable>
