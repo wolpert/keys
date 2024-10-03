@@ -5,6 +5,7 @@ import com.codeheadsystems.keys.model.ImmutableRawKey;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.metrics.declarative.Metrics;
 import com.codeheadsystems.metrics.declarative.Tag;
+import com.codeheadsystems.server.exception.NotFoundException;
 import java.security.SecureRandom;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -51,7 +52,25 @@ public class KeyManager {
     }
     byte[] key = new byte[size / 8];
     secureRandom.nextBytes(key);
-    return RawKey.of(UUID.randomUUID(), key);
+    final RawKey rawKey = RawKey.of(UUID.randomUUID(), key);
+    final boolean inserted;
+    try {
+      inserted = rawKeyDao.insert(rawKey);
+    } catch (RuntimeException e) {
+      throw new IllegalStateException("Failure to insert key into database", e);
+    }
+    if(inserted) {
+      return rawKey;
+    } else {
+      throw new IllegalStateException("Unable to insert key into database");
+    }
+  }
+
+  @Metrics
+  public RawKey getRawKey(final String uuid) {
+    LOGGER.trace("getRawKey({})", uuid);
+    return rawKeyDao.getKey(uuid)
+        .orElseThrow(() -> new NotFoundException("Key not found"));
   }
 
   /**

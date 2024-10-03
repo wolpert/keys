@@ -53,7 +53,7 @@ public class KeysResource implements Keys, JerseyResource {
   @Override
   public Key read(final String uuid) {
     LOGGER.trace("get({})", uuid);
-    final RawKey rawKey = keyManager.rawKey(uuid);
+    final RawKey rawKey = keyManager.getRawKey(uuid);
     return keyConverter.from(rawKey);
   }
 

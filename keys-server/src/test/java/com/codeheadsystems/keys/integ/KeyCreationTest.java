@@ -23,7 +23,7 @@ public class KeyCreationTest {
   );
 
   @Test
-  void create() throws InterruptedException {
+  void createAndGet() throws InterruptedException {
     final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/")
         .request()
         .post(Entity.text("blah")); // we really do not need an entity.
@@ -39,25 +39,22 @@ public class KeyCreationTest {
     final Key key2 = EXT.client().target(location)
         .request()
         .get(Key.class);
-    assertThat(key2.uuid()).isEqualTo(key.uuid()); // TODO test the whole key.
+    assertThat(key2).isEqualTo(key);
   }
 
   @Test
-  void get() {
+  void get_notFound() {
     final UUID uuid = UUID.randomUUID();
     final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/keys/" + uuid)
         .request()
         .get();
     assertThat(response)
         .isNotNull()
-        .hasFieldOrPropertyWithValue("status", 200);
-    final Key key = response.readEntity(Key.class);
-    assertThat(key)
-        .hasFieldOrPropertyWithValue("uuid", uuid.toString());
+        .hasFieldOrPropertyWithValue("status", 404);
   }
 
   @Test
-  void bad() {
+  void badRequest() {
     final Response response = EXT.client().target("http://localhost:" + EXT.getLocalPort() + "/v1/bad")
         .request()
         .get();

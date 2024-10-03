@@ -36,7 +36,7 @@ public interface RawKeyDao {
    * @param rawKey the raw key
    * @return the boolean
    */
-  @SqlUpdate("insert into KEYS (UUID, KEY) values (:uuid, :key, :size)")
+  @SqlUpdate("insert into KEYS (UUID, KEY, SIZE) values (:uuid, :key, :size)")
   boolean insert(@BindPojo RawKey rawKey);
 
   /**
