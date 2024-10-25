@@ -73,17 +73,4 @@ public class KeyManager {
         .orElseThrow(() -> new NotFoundException("Key not found"));
   }
 
-  /**
-   * Raw key raw key. TEMP method.
-   *
-   * @param uuid the uuid
-   * @return the raw key
-   */
-  @Metrics
-  public RawKey rawKey(String uuid) {
-    LOGGER.trace("rawKey({})", uuid);
-    final RawKey rawKey = generateRawKey(256);
-    return ImmutableRawKey.copyOf(rawKey).withUuid(uuid);
-  }
-
 }

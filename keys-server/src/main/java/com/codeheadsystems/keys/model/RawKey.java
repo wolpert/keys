@@ -52,7 +52,6 @@ public interface RawKey {
    *
    * @return integer. int
    */
-  @Value
   int size();
 
 }
