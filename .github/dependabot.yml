@@ -9,7 +9,6 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
-      day: "friday"
     groups:
       # Specify a name for the group, which will be used in pull request titles
       # and branch names
