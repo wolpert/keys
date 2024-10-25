@@ -8,7 +8,7 @@ updates:
   - package-ecosystem: "gradle" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
-      interval: "weekly"
+      interval: "daily"
       day: "friday"
     groups:
       # Specify a name for the group, which will be used in pull request titles
