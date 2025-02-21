@@ -3,9 +3,9 @@
 
 [versions]
 assertj = "3.27.3"
-awsSDK = "2.30.24"
+awsSDK = "2.30.25"
 codehead-test = "1.0.11"
-codehead-metrics = "2.0.11"
+codehead-metrics = "2.0.12"
 commons-codec = "1.18.0"
 dagger = "2.55"
 dropwizard = "4.0.12"
