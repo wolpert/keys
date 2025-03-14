@@ -3,7 +3,7 @@
 
 [versions]
 assertj = "3.27.3"
-awsSDK = "2.30.38"
+awsSDK = "2.31.0"
 codehead-test = "3.0.1"
 codehead-metrics = "3.0.1"
 commons-codec = "1.18.0"
