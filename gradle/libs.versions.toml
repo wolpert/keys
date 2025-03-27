@@ -3,17 +3,17 @@
 
 [versions]
 assertj = "3.27.3"
-awsSDK = "2.31.8"
+awsSDK = "2.31.9"
 codehead-test = "3.0.2"
 codehead-metrics = "3.0.2"
 commons-codec = "1.18.0"
 dagger = "2.56.1"
-dropwizard = "4.0.12"
+dropwizard = "4.0.13"
 guava = "33.4.6-jre"
 hsqldb = '2.7.4'
 immutables = '2.10.1'
 jackson = '2.18.3'
-jdbi = '3.48.0'
+jdbi = '3.49.0'
 junit-jupiter = "5.12.1"
 liquibase = '4.31.1'
 micrometer = '1.14.5'
