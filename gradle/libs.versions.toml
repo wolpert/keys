@@ -3,7 +3,7 @@
 
 [versions]
 assertj = "3.27.3"
-awsSDK = "2.31.20"
+awsSDK = "2.31.21"
 codehead-test = "3.0.2"
 codehead-metrics = "3.0.2"
 commons-codec = "1.18.0"
@@ -14,9 +14,9 @@ hsqldb = '2.7.4'
 immutables = '2.10.1'
 jackson = '2.18.3'
 jdbi = '3.49.0'
-junit-jupiter = "5.12.1"
+junit-jupiter = "5.12.2"
 liquibase = '4.31.1'
-micrometer = '1.14.5'
+micrometer = '1.14.6'
 mokito = '5.17.0'
 pgjdbc = '42.7.5'
 slf4j = '2.0.17'
