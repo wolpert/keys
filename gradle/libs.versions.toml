@@ -18,7 +18,7 @@ junit-jupiter = "5.13.1"
 liquibase = '4.32.0'
 micrometer = '1.15.1'
 mokito = '5.18.0'
-pgjdbc = '42.7.6'
+pgjdbc = '42.7.7'
 slf4j = '2.0.17'
 rs-api = "4.0.0"
 
