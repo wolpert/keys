@@ -3,10 +3,10 @@
 
 [versions]
 assertj = "3.27.3"
-awsSDK = "2.32.5"
+awsSDK = "2.32.6"
 codehead-test = "3.0.4"
 codehead-metrics = "3.0.4"
-commons-codec = "1.18.0"
+commons-codec = "1.19.0"
 dagger = "2.57"
 dropwizard = "4.0.14"
 guava = "33.4.8-jre"
