@@ -2,8 +2,8 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-assertj = "3.27.5"
-awsSDK = "2.34.0"
+assertj = "3.27.6"
+awsSDK = "2.34.1"
 codehead-test = "3.0.5"
 codehead-metrics = "3.0.5"
 commons-codec = "1.19.0"
