@@ -3,7 +3,7 @@
 
 [versions]
 assertj = "3.27.6"
-awsSDK = "2.35.5"
+awsSDK = "2.35.6"
 codehead-test = "3.0.5"
 codehead-metrics = "3.0.5"
 commons-codec = "1.19.0"
@@ -16,7 +16,7 @@ jackson = '2.20.0'
 jdbi = '3.49.6'
 junit-jupiter = "6.0.0"
 liquibase = '5.0.1'
-micrometer = '1.15.4'
+micrometer = '1.15.5'
 mokito = '5.20.0'
 pgjdbc = '42.7.8'
 slf4j = '2.0.17'
