@@ -1,0 +1,31 @@
+[package]
+name = "violet-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "violet"
+path = "src/main.rs"
+
+[dependencies]
+violet-core = { path = "../violet-core" }
+violet-client = { path = "../violet-client" }
+violet-daemon = { path = "../violet-daemon" }
+
+# CLI
+clap = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Serialization
+serde_json = { workspace = true }

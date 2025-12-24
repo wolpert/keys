@@ -22,7 +22,7 @@ dependencies {
     implementation(libs.liquibase.core)
     implementation(libs.bundles.jdbi)
     testImplementation(libs.bundles.jdbi.testing)
-    testImplementation(libs.hsqldb)
+    implementation(libs.hsqldb)
 
     // PreCompile
     implementation(libs.javax.inject)

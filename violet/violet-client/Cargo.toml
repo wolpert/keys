@@ -1,0 +1,31 @@
+[package]
+name = "violet-client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+violet-core = { path = "../violet-core" }
+
+# HTTP
+reqwest = { workspace = true }
+url = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+[dev-dependencies]
+mockito = { workspace = true }
+tokio = { workspace = true }
