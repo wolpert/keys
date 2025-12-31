@@ -12,6 +12,13 @@ import javax.inject.Singleton;
 public class CommonModule {
 
   /**
+   * Instantiates a new Common module.
+   */
+  public CommonModule() {
+    // Default constructor
+  }
+
+  /**
    * Clock clock.
    *
    * @return the clock

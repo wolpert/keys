@@ -33,6 +33,7 @@ class PdbMetadataManagerTest {
       .build();
 
   @Mock private PdbMetadataDao dao;
+  @Mock private PdbItemTableManager itemTableManager;
   @Mock private StatementContext context;
 
   @InjectMocks private PdbTableManager manager;

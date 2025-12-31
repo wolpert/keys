@@ -20,16 +20,20 @@ public class PdbTableManager {
   private static final Logger log = LoggerFactory.getLogger(PdbTableManager.class);
 
   private final PdbMetadataDao pdbMetadataDao;
+  private final PdbItemTableManager pdbItemTableManager;
 
   /**
    * Instantiates a new PdbMetadata manager.
    *
-   * @param pdbMetadataDao the dao
+   * @param pdbMetadataDao       the dao
+   * @param pdbItemTableManager the item table manager
    */
   @Inject
-  public PdbTableManager(final PdbMetadataDao pdbMetadataDao) {
-    log.info("PdbTableManager({})", pdbMetadataDao);
+  public PdbTableManager(final PdbMetadataDao pdbMetadataDao,
+                         final PdbItemTableManager pdbItemTableManager) {
+    log.info("PdbTableManager({}, {})", pdbMetadataDao, pdbItemTableManager);
     this.pdbMetadataDao = pdbMetadataDao;
+    this.pdbItemTableManager = pdbItemTableManager;
   }
 
   /**
@@ -45,7 +49,13 @@ public class PdbTableManager {
       return false;
     }
     try {
-      return pdbMetadataDao.insert(pdbMetadata);
+      final boolean inserted = pdbMetadataDao.insert(pdbMetadata);
+      if (inserted) {
+        // Create the corresponding item storage table
+        pdbItemTableManager.createItemTable(pdbMetadata);
+        log.info("Created DynamoDB table and item storage table: {}", pdbMetadata.name());
+      }
+      return inserted;
     } catch (UnableToExecuteStatementException e) {
       if (e.getCause() instanceof SQLIntegrityConstraintViolationException) {
         log.warn("Table already exists: {}", pdbMetadata);
@@ -76,7 +86,13 @@ public class PdbTableManager {
    */
   public boolean deletePdbTable(final String name) {
     log.trace("deletePdbTable({})", name);
-    return pdbMetadataDao.delete(name);
+    final boolean deleted = pdbMetadataDao.delete(name);
+    if (deleted) {
+      // Drop the corresponding item storage table
+      pdbItemTableManager.dropItemTable(name);
+      log.info("Deleted DynamoDB table and item storage table: {}", name);
+    }
+    return deleted;
   }
 
   /**
