@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class PdbStreamDaoTest extends BaseJdbiTest {
 
   private static final String TEST_TABLE = "test-stream-table";
-  private static final String STREAM_TABLE_NAME = "pdb_stream_test-stream-table";
+  private String streamTableName;
 
   private PdbStreamDao dao;
   private PdbStreamTableManager tableManager;
@@ -27,13 +27,14 @@ class PdbStreamDaoTest extends BaseJdbiTest {
 
     // Create the stream table for testing
     tableManager.createStreamTable(TEST_TABLE);
+    streamTableName = tableManager.getStreamTableName(TEST_TABLE);
   }
 
   @Test
   void insert_createsRecord() {
     final PdbStreamRecord record = createTestRecord("event-1", "INSERT");
 
-    final boolean result = dao.insert(STREAM_TABLE_NAME, record);
+    final boolean result = dao.insert(streamTableName, record);
 
     assertThat(result).isTrue();
   }
@@ -43,11 +44,14 @@ class PdbStreamDaoTest extends BaseJdbiTest {
     final PdbStreamRecord record1 = createTestRecord("event-1", "INSERT");
     final PdbStreamRecord record2 = createTestRecord("event-2", "MODIFY");
 
-    dao.insert(STREAM_TABLE_NAME, record1);
-    dao.insert(STREAM_TABLE_NAME, record2);
+    final boolean inserted1 = dao.insert(streamTableName, record1);
+    final boolean inserted2 = dao.insert(streamTableName, record2);
+
+    assertThat(inserted1).as("First insert should succeed").isTrue();
+    assertThat(inserted2).as("Second insert should succeed").isTrue();
 
     // Verify records have sequential sequence numbers
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
     assertThat(records).hasSize(2);
     assertThat(records.get(0).sequenceNumber()).isLessThan(records.get(1).sequenceNumber());
   }
@@ -56,15 +60,15 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   void getRecords_returnsRecordsAfterSequence() {
     // Insert 5 records
     for (int i = 1; i <= 5; i++) {
-      dao.insert(STREAM_TABLE_NAME, createTestRecord("event-" + i, "INSERT"));
+      dao.insert(streamTableName, createTestRecord("event-" + i, "INSERT"));
     }
 
     // Get all records to find the 3rd sequence number
-    final List<PdbStreamRecord> allRecords = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> allRecords = dao.getRecords(streamTableName, 0, 10);
     final long thirdSequence = allRecords.get(2).sequenceNumber();
 
     // Get records after the 3rd
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, thirdSequence, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, thirdSequence, 10);
 
     assertThat(records).hasSize(2);
     assertThat(records.get(0).eventId()).isEqualTo("event-4");
@@ -75,10 +79,10 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   void getRecords_respectsLimit() {
     // Insert 10 records
     for (int i = 1; i <= 10; i++) {
-      dao.insert(STREAM_TABLE_NAME, createTestRecord("event-" + i, "INSERT"));
+      dao.insert(streamTableName, createTestRecord("event-" + i, "INSERT"));
     }
 
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 5);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 5);
 
     assertThat(records).hasSize(5);
   }
@@ -86,11 +90,11 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   @Test
   void getRecords_orderedBySequenceNumber() {
     // Insert records
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-1", "INSERT"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-2", "MODIFY"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-3", "REMOVE"));
+    dao.insert(streamTableName, createTestRecord("event-1", "INSERT"));
+    dao.insert(streamTableName, createTestRecord("event-2", "MODIFY"));
+    dao.insert(streamTableName, createTestRecord("event-3", "REMOVE"));
 
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
 
     assertThat(records).hasSize(3);
     // Verify ascending order
@@ -103,14 +107,14 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   @Test
   void getLatestSequenceNumber_returnsHighestSequence() {
     // Insert multiple records
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-1", "INSERT"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-2", "MODIFY"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-3", "REMOVE"));
+    dao.insert(streamTableName, createTestRecord("event-1", "INSERT"));
+    dao.insert(streamTableName, createTestRecord("event-2", "MODIFY"));
+    dao.insert(streamTableName, createTestRecord("event-3", "REMOVE"));
 
-    final long latestSequence = dao.getLatestSequenceNumber(STREAM_TABLE_NAME);
+    final long latestSequence = dao.getLatestSequenceNumber(streamTableName);
 
     // Get all records to verify it's the highest
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
     final long expectedMax = records.stream()
         .mapToLong(PdbStreamRecord::sequenceNumber)
         .max()
@@ -121,7 +125,7 @@ class PdbStreamDaoTest extends BaseJdbiTest {
 
   @Test
   void getLatestSequenceNumber_returnsZeroWhenEmpty() {
-    final long latestSequence = dao.getLatestSequenceNumber(STREAM_TABLE_NAME);
+    final long latestSequence = dao.getLatestSequenceNumber(streamTableName);
 
     assertThat(latestSequence).isZero();
   }
@@ -129,14 +133,14 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   @Test
   void getTrimHorizon_returnsLowestSequence() {
     // Insert multiple records
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-1", "INSERT"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-2", "MODIFY"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-3", "REMOVE"));
+    dao.insert(streamTableName, createTestRecord("event-1", "INSERT"));
+    dao.insert(streamTableName, createTestRecord("event-2", "MODIFY"));
+    dao.insert(streamTableName, createTestRecord("event-3", "REMOVE"));
 
-    final long trimHorizon = dao.getTrimHorizon(STREAM_TABLE_NAME);
+    final long trimHorizon = dao.getTrimHorizon(streamTableName);
 
     // Get all records to verify it's the lowest
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
     final long expectedMin = records.stream()
         .mapToLong(PdbStreamRecord::sequenceNumber)
         .min()
@@ -147,7 +151,7 @@ class PdbStreamDaoTest extends BaseJdbiTest {
 
   @Test
   void getTrimHorizon_returnsZeroWhenEmpty() {
-    final long trimHorizon = dao.getTrimHorizon(STREAM_TABLE_NAME);
+    final long trimHorizon = dao.getTrimHorizon(streamTableName);
 
     assertThat(trimHorizon).isZero();
   }
@@ -159,20 +163,20 @@ class PdbStreamDaoTest extends BaseJdbiTest {
     final Instant recent = now.minus(1, ChronoUnit.HOURS);
 
     // Insert old record
-    dao.insert(STREAM_TABLE_NAME, createTestRecordWithTimestamp("event-1", "INSERT", old));
+    dao.insert(streamTableName, createTestRecordWithTimestamp("event-1", "INSERT", old));
 
     // Insert recent records
-    dao.insert(STREAM_TABLE_NAME, createTestRecordWithTimestamp("event-2", "MODIFY", recent));
-    dao.insert(STREAM_TABLE_NAME, createTestRecordWithTimestamp("event-3", "REMOVE", now));
+    dao.insert(streamTableName, createTestRecordWithTimestamp("event-2", "MODIFY", recent));
+    dao.insert(streamTableName, createTestRecordWithTimestamp("event-3", "REMOVE", now));
 
     // Delete records older than 24 hours
     final Instant cutoff = now.minus(24, ChronoUnit.HOURS);
-    final int deleted = dao.deleteOlderThan(STREAM_TABLE_NAME, cutoff);
+    final int deleted = dao.deleteOlderThan(streamTableName, cutoff);
 
     assertThat(deleted).isEqualTo(1);
 
     // Verify only recent records remain
-    final List<PdbStreamRecord> remaining = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> remaining = dao.getRecords(streamTableName, 0, 10);
     assertThat(remaining).hasSize(2);
     assertThat(remaining).extracting(PdbStreamRecord::eventId)
         .containsExactly("event-2", "event-3");
@@ -181,10 +185,10 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   @Test
   void deleteOlderThan_returnsZeroWhenNoRecordsDeleted() {
     final Instant now = Instant.now();
-    dao.insert(STREAM_TABLE_NAME, createTestRecordWithTimestamp("event-1", "INSERT", now));
+    dao.insert(streamTableName, createTestRecordWithTimestamp("event-1", "INSERT", now));
 
     final Instant cutoff = now.minus(24, ChronoUnit.HOURS);
-    final int deleted = dao.deleteOlderThan(STREAM_TABLE_NAME, cutoff);
+    final int deleted = dao.deleteOlderThan(streamTableName, cutoff);
 
     assertThat(deleted).isZero();
   }
@@ -192,18 +196,18 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   @Test
   void count_returnsCorrectCount() {
     // Insert 3 records
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-1", "INSERT"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-2", "MODIFY"));
-    dao.insert(STREAM_TABLE_NAME, createTestRecord("event-3", "REMOVE"));
+    dao.insert(streamTableName, createTestRecord("event-1", "INSERT"));
+    dao.insert(streamTableName, createTestRecord("event-2", "MODIFY"));
+    dao.insert(streamTableName, createTestRecord("event-3", "REMOVE"));
 
-    final long count = dao.count(STREAM_TABLE_NAME);
+    final long count = dao.count(streamTableName);
 
     assertThat(count).isEqualTo(3);
   }
 
   @Test
   void count_returnsZeroWhenEmpty() {
-    final long count = dao.count(STREAM_TABLE_NAME);
+    final long count = dao.count(streamTableName);
 
     assertThat(count).isZero();
   }
@@ -225,12 +229,12 @@ class PdbStreamDaoTest extends BaseJdbiTest {
         .createDate(Instant.now())
         .build();
 
-    final boolean result = dao.insert(STREAM_TABLE_NAME, record);
+    final boolean result = dao.insert(streamTableName, record);
 
     assertThat(result).isTrue();
 
     // Verify retrieval
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
     assertThat(records).hasSize(1);
     assertThat(records.get(0).sortKeyValue()).hasValue("sort-456");
     assertThat(records.get(0).oldImageJson()).hasValue("{\"name\":{\"S\":\"old\"}}");
@@ -253,12 +257,12 @@ class PdbStreamDaoTest extends BaseJdbiTest {
         .createDate(Instant.now())
         .build();
 
-    final boolean result = dao.insert(STREAM_TABLE_NAME, record);
+    final boolean result = dao.insert(streamTableName, record);
 
     assertThat(result).isTrue();
 
     // Verify retrieval
-    final List<PdbStreamRecord> records = dao.getRecords(STREAM_TABLE_NAME, 0, 10);
+    final List<PdbStreamRecord> records = dao.getRecords(streamTableName, 0, 10);
     assertThat(records).hasSize(1);
     assertThat(records.get(0).sortKeyValue()).isEmpty();
     assertThat(records.get(0).oldImageJson()).isEmpty();

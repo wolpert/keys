@@ -34,6 +34,7 @@ class PdbMetadataManagerTest {
 
   @Mock private PdbMetadataDao dao;
   @Mock private PdbItemTableManager itemTableManager;
+  @Mock private PdbStreamTableManager streamTableManager;
   @Mock private StatementContext context;
 
   @InjectMocks private PdbTableManager manager;
@@ -90,6 +91,56 @@ class PdbMetadataManagerTest {
   void testListPdbTables() {
     when(dao.listTableNames()).thenReturn(List.of(PDB_TABLE.name()));
     assertThat(manager.listPdbTables()).containsExactly(PDB_TABLE.name());
+  }
+
+  @Test
+  void testEnableTtl() {
+    final String ttlAttributeName = "expireAt";
+    manager.enableTtl(PDB_TABLE.name(), ttlAttributeName);
+    // Verify updateTtl was called with correct parameters
+    org.mockito.Mockito.verify(dao).updateTtl(PDB_TABLE.name(), ttlAttributeName, true);
+  }
+
+  @Test
+  void testDisableTtl() {
+    manager.disableTtl(PDB_TABLE.name());
+    // Verify updateTtl was called to disable TTL
+    org.mockito.Mockito.verify(dao).updateTtl(PDB_TABLE.name(), null, false);
+  }
+
+  @Test
+  void testEnableStream() {
+    final String streamViewType = "NEW_AND_OLD_IMAGES";
+    when(dao.getTable(PDB_TABLE.name())).thenReturn(of(PDB_TABLE));
+
+    manager.enableStream(PDB_TABLE.name(), streamViewType);
+
+    // Verify stream table was created
+    org.mockito.Mockito.verify(streamTableManager).createStreamTable(PDB_TABLE.name());
+    // Verify metadata was updated with stream config (ARN and label will be dynamic)
+    org.mockito.Mockito.verify(dao).updateStreamConfig(
+        org.mockito.Mockito.eq(PDB_TABLE.name()),
+        org.mockito.Mockito.eq(true),
+        org.mockito.Mockito.eq(streamViewType),
+        org.mockito.Mockito.anyString(),  // streamArn is dynamically generated
+        org.mockito.Mockito.anyString()   // streamLabel is dynamically generated
+    );
+  }
+
+  @Test
+  void testEnableStream_tableNotFound() {
+    when(dao.getTable(PDB_TABLE.name())).thenReturn(empty());
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> manager.enableStream(PDB_TABLE.name(), "NEW_IMAGE"))
+        .withMessage("Table not found: " + PDB_TABLE.name());
+  }
+
+  @Test
+  void testDisableStream() {
+    manager.disableStream(PDB_TABLE.name());
+    // Verify metadata was updated to disable streams
+    org.mockito.Mockito.verify(dao).updateStreamConfig(PDB_TABLE.name(), false, null, null, null);
   }
 
 }

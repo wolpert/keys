@@ -55,6 +55,7 @@ public class PdbItemManager {
   private final KeyConditionExpressionParser keyConditionExpressionParser;
   private final UpdateExpressionParser updateExpressionParser;
   private final GsiProjectionHelper gsiProjectionHelper;
+  private final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   private final Clock clock;
 
   /**
@@ -69,6 +70,7 @@ public class PdbItemManager {
    * @param keyConditionExpressionParser   the key condition expression parser
    * @param updateExpressionParser         the update expression parser
    * @param gsiProjectionHelper            the GSI projection helper
+   * @param streamCaptureHelper            the stream capture helper
    * @param clock                          the clock
    */
   @Inject
@@ -81,10 +83,12 @@ public class PdbItemManager {
                         final KeyConditionExpressionParser keyConditionExpressionParser,
                         final UpdateExpressionParser updateExpressionParser,
                         final GsiProjectionHelper gsiProjectionHelper,
+                        final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper,
                         final Clock clock) {
-    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         tableManager, itemTableManager, itemDao, itemConverter, attributeValueConverter,
-        conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper, clock);
+        conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper,
+        streamCaptureHelper, clock);
     this.tableManager = tableManager;
     this.itemTableManager = itemTableManager;
     this.itemDao = itemDao;
@@ -94,6 +98,7 @@ public class PdbItemManager {
     this.keyConditionExpressionParser = keyConditionExpressionParser;
     this.updateExpressionParser = updateExpressionParser;
     this.gsiProjectionHelper = gsiProjectionHelper;
+    this.streamCaptureHelper = streamCaptureHelper;
     this.clock = clock;
   }
 
@@ -137,6 +142,17 @@ public class PdbItemManager {
             .message("The conditional request failed")
             .build();
       }
+    }
+
+    // Capture stream event BEFORE actual write
+    if (existingPdbItem.isPresent()) {
+      // MODIFY event - item exists
+      final Map<String, AttributeValue> oldItem = attributeValueConverter.fromJson(
+          existingPdbItem.get().attributesJson());
+      streamCaptureHelper.captureModify(tableName, oldItem, request.item());
+    } else {
+      // INSERT event - new item
+      streamCaptureHelper.captureInsert(tableName, request.item());
     }
 
     // Convert to PdbItem
@@ -243,6 +259,15 @@ public class PdbItemManager {
         request.expressionAttributeValues(),
         request.expressionAttributeNames());
 
+    // Capture stream event BEFORE actual write
+    if (existingPdbItem.isPresent()) {
+      // MODIFY event - item exists
+      streamCaptureHelper.captureModify(tableName, currentAttributes, updatedAttributes);
+    } else {
+      // INSERT event - item created via updateItem
+      streamCaptureHelper.captureInsert(tableName, updatedAttributes);
+    }
+
     // Convert to PdbItem and save
     final PdbItem updatedPdbItem;
     if (existingPdbItem.isPresent()) {
@@ -314,6 +339,11 @@ public class PdbItemManager {
             .message("The conditional request failed")
             .build();
       }
+    }
+
+    // Capture REMOVE stream event BEFORE actual delete
+    if (oldItem != null) {
+      streamCaptureHelper.captureRemove(tableName, oldItem);
     }
 
     // Delete from GSI tables first if item exists

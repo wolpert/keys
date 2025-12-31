@@ -61,6 +61,7 @@ class PdbItemManagerTest {
   @Mock private KeyConditionExpressionParser keyConditionExpressionParser;
   @Mock private UpdateExpressionParser updateExpressionParser;
   @Mock private GsiProjectionHelper gsiProjectionHelper;
+  @Mock private com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   @Mock private Clock clock;
 
   private PdbItemManager manager;
@@ -70,7 +71,7 @@ class PdbItemManagerTest {
   void setup() {
     manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
         attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
-        gsiProjectionHelper, clock);
+        gsiProjectionHelper, streamCaptureHelper, clock);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)
