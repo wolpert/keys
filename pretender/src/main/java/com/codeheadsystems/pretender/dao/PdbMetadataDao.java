@@ -36,8 +36,10 @@ public interface PdbMetadataDao {
    * @param pdbMetadata the pdb table
    * @return the boolean
    */
-  @SqlUpdate("insert into PDB_TABLE (NAME, HASH_KEY, SORT_KEY, GLOBAL_SECONDARY_INDEXES, TTL_ATTRIBUTE_NAME, TTL_ENABLED, CREATE_DATE) "
-      + "values (:name, :hashKey, :sortKey, :globalSecondaryIndexes, :ttlAttributeName, :ttlEnabled, :createDate)")
+  @SqlUpdate("insert into PDB_TABLE (NAME, HASH_KEY, SORT_KEY, GLOBAL_SECONDARY_INDEXES, TTL_ATTRIBUTE_NAME, TTL_ENABLED, " +
+      "STREAM_ENABLED, STREAM_VIEW_TYPE, STREAM_ARN, STREAM_LABEL, CREATE_DATE) "
+      + "values (:name, :hashKey, :sortKey, :globalSecondaryIndexes, :ttlAttributeName, :ttlEnabled, " +
+      ":streamEnabled, :streamViewType, :streamArn, :streamLabel, :createDate)")
   boolean insert(@BindPojo PdbMetadata pdbMetadata);
 
   /**
@@ -61,5 +63,23 @@ public interface PdbMetadataDao {
   boolean updateTtl(@Bind("name") String name,
                     @Bind("ttlAttributeName") String ttlAttributeName,
                     @Bind("ttlEnabled") boolean ttlEnabled);
+
+  /**
+   * Update stream configuration.
+   *
+   * @param name            the table name
+   * @param streamEnabled   whether streams are enabled
+   * @param streamViewType  the stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES)
+   * @param streamArn       the stream ARN
+   * @param streamLabel     the stream label
+   * @return the boolean
+   */
+  @SqlUpdate("update PDB_TABLE set STREAM_ENABLED = :streamEnabled, STREAM_VIEW_TYPE = :streamViewType, " +
+      "STREAM_ARN = :streamArn, STREAM_LABEL = :streamLabel where NAME = :name")
+  boolean updateStreamConfig(@Bind("name") String name,
+                             @Bind("streamEnabled") boolean streamEnabled,
+                             @Bind("streamViewType") String streamViewType,
+                             @Bind("streamArn") String streamArn,
+                             @Bind("streamLabel") String streamLabel);
 
 }

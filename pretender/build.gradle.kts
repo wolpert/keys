@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(project(":database-utils"))
     implementation(libs.jackson.databind)
+    implementation(libs.jackson.datatype.jsr310)
     implementation(libs.immutables.annotations)
     annotationProcessor(libs.immutables.value)
 

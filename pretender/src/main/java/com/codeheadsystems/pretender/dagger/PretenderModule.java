@@ -6,6 +6,7 @@ import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
 import com.codeheadsystems.pretender.model.PdbGlobalSecondaryIndex;
 import com.codeheadsystems.pretender.model.PdbItem;
 import com.codeheadsystems.pretender.model.PdbMetadata;
+import com.codeheadsystems.pretender.model.PdbStreamRecord;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dagger.Module;
 import dagger.Provides;
@@ -64,7 +65,7 @@ public class PretenderModule {
     @Singleton
     @Named(JdbiFactory.IMMUTABLES)
     public Set<Class<?>> immutableClasses() {
-      return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class);
+      return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class, PdbStreamRecord.class);
     }
 
   /**
@@ -76,6 +77,8 @@ public class PretenderModule {
   @Singleton
   public ObjectMapper objectMapper() {
     final ObjectMapper objectMapper = new ObjectMapper();
+    // Register all available Jackson modules including Java 8 date/time support
+    objectMapper.findAndRegisterModules();
     // Configure to handle unknown properties gracefully
     objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     // Enable detection of fields without getters (for Immutables)
