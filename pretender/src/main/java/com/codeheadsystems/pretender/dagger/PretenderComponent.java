@@ -1,6 +1,7 @@
 package com.codeheadsystems.pretender.dagger;
 
 import com.codeheadsystems.pretender.DynamoDbPretenderClient;
+import com.codeheadsystems.pretender.DynamoDbStreamsPretenderClient;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.service.TtlCleanupService;
@@ -44,4 +45,11 @@ public interface PretenderComponent {
    * @return the ttl cleanup service
    */
   TtlCleanupService ttlCleanupService();
+
+  /**
+   * DynamoDB Streams pretender client.
+   *
+   * @return the dynamodb streams pretender client
+   */
+  DynamoDbStreamsPretenderClient dynamoDbStreamsPretenderClient();
 }

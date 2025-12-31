@@ -82,4 +82,12 @@ public interface PdbMetadataDao {
                              @Bind("streamArn") String streamArn,
                              @Bind("streamLabel") String streamLabel);
 
+  /**
+   * Gets list of table names with streams enabled.
+   *
+   * @return the list of table names
+   */
+  @SqlQuery("select NAME from PDB_TABLE where STREAM_ENABLED = true order by NAME asc")
+  List<String> getTablesWithStreamsEnabled();
+
 }
