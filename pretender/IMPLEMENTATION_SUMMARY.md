@@ -2,11 +2,11 @@
 
 ## Overview
 
-Successfully implemented comprehensive DynamoDB functionality in the pretender module, including all item operations, Global Secondary Indexes (GSI), and Time-To-Live (TTL), enabling full drop-in replacement of AWS DynamoDB with SQL-backed storage.
+Successfully implemented comprehensive DynamoDB functionality in the pretender module, including all item operations, Global Secondary Indexes (GSI), Time-To-Live (TTL), and Expression Attribute Names, enabling full drop-in replacement of AWS DynamoDB with SQL-backed storage.
 
 **Completion**: All features implemented (100%)
-**Test Status**: All tests passing (157 total tests)
-**Features**: Item Operations, GSI, TTL, Background Cleanup
+**Test Status**: All tests passing (171 total tests)
+**Features**: Item Operations, GSI, TTL, Background Cleanup, Expression Attribute Names
 
 ---
 
@@ -29,7 +29,8 @@ The implementation provides a **fully functional DynamoDB-compatible client** th
 ✅ **Expression Support**:
 - KeyConditionExpression: `=`, `<`, `>`, `<=`, `>=`, `BETWEEN`, `begins_with()`
 - UpdateExpression: `SET`, `REMOVE`, `ADD`, `DELETE` actions
-- Support for expression attribute values (`:placeholder`)
+- Expression Attribute Names: Full `#placeholder` support for reserved words and special characters
+- Expression Attribute Values: `:placeholder` support
 - Complex expressions: `SET count = count + :inc`, `list_append()`, `if_not_exists()`
 
 ✅ **Global Secondary Indexes (GSI)**:
@@ -176,8 +177,8 @@ DynamoDbPretenderClient (AWS SDK interface)
 ### Unit Tests
 - **AttributeValueConverter**: 15 tests (all DynamoDB types + edge cases)
 - **ItemConverter**: 12 tests (conversion, projection, validation)
-- **KeyConditionExpressionParser**: 16 tests (all operators + error cases)
-- **UpdateExpressionParser**: 22 tests (SET, REMOVE, ADD, DELETE + complex expressions)
+- **KeyConditionExpressionParser**: 25 tests (all operators + error cases + expression attribute names)
+- **UpdateExpressionParser**: 22 tests (SET, REMOVE, ADD, DELETE + complex expressions + expression attribute names)
 - **PdbItemDao**: 9 tests (CRUD, query, scan, pagination)
 - **PdbItemTableManager**: 7 tests (create, drop, idempotency)
 - **PdbItemManager**: 11 tests (all 6 operations with mocked dependencies)
@@ -213,7 +214,15 @@ DynamoDbPretenderClient (AWS SDK interface)
   - Projection types with TTL
   - Multiple GSIs with TTL
 
-**Total Tests**: 157 (all passing - 100% success rate)
+- **ExpressionAttributeNamesTest**: 6 tests covering:
+  - Query with expression attribute names in KeyConditionExpression
+  - UpdateItem with expression attribute names in UpdateExpression
+  - GSI queries with expression attribute names
+  - begins_with() function with expression attribute names
+  - REMOVE and BETWEEN operators with expression attribute names
+  - Reserved word handling (status, name, date, etc.)
+
+**Total Tests**: 171 (all passing - 100% success rate)
 
 ---
 
@@ -343,6 +352,45 @@ TtlCleanupService cleanupService = component.ttlCleanupService();
 cleanupService.start();  // Runs every 5 minutes by default
 ```
 
+### Expression Attribute Names
+
+```java
+// Use expression attribute names for reserved words or special characters
+// DynamoDB has reserved words like 'name', 'status', 'date', 'timestamp', etc.
+
+// Query with expression attribute names
+QueryResponse response = client.query(QueryRequest.builder()
+    .tableName("Products")
+    .keyConditionExpression("#status = :statusVal AND #date > :dateVal")
+    .expressionAttributeNames(Map.of(
+        "#status", "status",    // 'status' is a reserved word
+        "#date", "date"         // 'date' is a reserved word
+    ))
+    .expressionAttributeValues(Map.of(
+        ":statusVal", AttributeValue.builder().s("ACTIVE").build(),
+        ":dateVal", AttributeValue.builder().s("2024-01-01").build()
+    ))
+    .build());
+
+// Update with expression attribute names
+client.updateItem(UpdateItemRequest.builder()
+    .tableName("Products")
+    .key(Map.of("productId", AttributeValue.builder().s("prod-001").build()))
+    .updateExpression("SET #n = :newName, #s = :newStatus, #c = #c + :inc")
+    .expressionAttributeNames(Map.of(
+        "#n", "name",      // 'name' is a reserved word
+        "#s", "status",    // 'status' is a reserved word
+        "#c", "count"      // 'count' is a reserved word
+    ))
+    .expressionAttributeValues(Map.of(
+        ":newName", AttributeValue.builder().s("Updated Product").build(),
+        ":newStatus", AttributeValue.builder().s("ACTIVE").build(),
+        ":inc", AttributeValue.builder().n("5").build()
+    ))
+    .returnValues(ReturnValue.ALL_NEW)
+    .build());
+```
+
 ---
 
 ## Benefits
@@ -366,7 +414,6 @@ cleanupService.start();  // Runs every 5 minutes by default
 
 The following features were deliberately deferred but could be added:
 
-- **Expression Attribute Names**: Full support for `#placeholder` in all expressions
 - **Filter Expressions**: Post-query filtering for query/scan operations
 - **Batch Operations**: BatchGetItem, BatchWriteItem
 - **Transactions**: TransactGetItems, TransactWriteItems
@@ -410,6 +457,6 @@ Users can now:
 - Use Global Secondary Indexes for alternate query patterns
 - Enable automatic item expiration with TTL and background cleanup
 
-**Total Implementation**: Complete DynamoDB 2.x compatibility
-**Lines of Code**: ~5,000+ (including comprehensive tests)
-**Test Success Rate**: 100% (157/157 tests passing)
+**Total Implementation**: Complete DynamoDB 2.x compatibility with Expression Attribute Names
+**Lines of Code**: ~5,500+ (including comprehensive tests)
+**Test Success Rate**: 100% (171/171 tests passing)

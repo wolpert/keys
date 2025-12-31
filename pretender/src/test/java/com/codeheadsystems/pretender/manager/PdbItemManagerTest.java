@@ -406,7 +406,7 @@ class PdbItemManagerTest {
     );
 
     when(tableManager.getPdbTable(TABLE_NAME)).thenReturn(Optional.of(metadata));
-    when(keyConditionExpressionParser.parse("id = :id", values)).thenReturn(condition);
+    when(keyConditionExpressionParser.parse(eq("id = :id"), eq(values), any())).thenReturn(condition);
     when(itemDao.query(ITEM_TABLE_NAME, "123", null, Optional.empty(), 101))
         .thenReturn(List.of(item1));
     when(attributeValueConverter.fromJson(item1.attributesJson())).thenReturn(attr1);

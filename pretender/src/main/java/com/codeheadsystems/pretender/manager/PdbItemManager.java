@@ -313,7 +313,8 @@ public class PdbItemManager {
     final KeyConditionExpressionParser.ParsedKeyCondition condition =
         keyConditionExpressionParser.parse(
             request.keyConditionExpression(),
-            request.expressionAttributeValues());
+            request.expressionAttributeValues(),
+            request.expressionAttributeNames());
 
     // Determine limit (default to 100 if not specified)
     final int limit = request.limit() != null ? request.limit() : 100;
