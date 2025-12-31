@@ -21,13 +21,20 @@ import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
@@ -36,6 +43,7 @@ import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
 /**
  * Manager for DynamoDB item operations.
@@ -699,5 +707,91 @@ public class PdbItemManager {
     mainSortKeyValue.ifPresent(msk -> sb.append("#").append(msk));
 
     return sb.toString();
+  }
+
+  /**
+   * Batch get items from one or more tables.
+   *
+   * @param request the batch get item request
+   * @return the batch get item response
+   */
+  public BatchGetItemResponse batchGetItem(final BatchGetItemRequest request) {
+    log.trace("batchGetItem({})", request);
+
+    final Map<String, List<Map<String, AttributeValue>>> responses = new HashMap<>();
+
+    // Process each table in the request
+    for (Map.Entry<String, KeysAndAttributes> entry : request.requestItems().entrySet()) {
+      final String tableName = entry.getKey();
+      final KeysAndAttributes keysAndAttributes = entry.getValue();
+      final List<Map<String, AttributeValue>> items = new ArrayList<>();
+
+      // Verify table exists
+      final PdbMetadata metadata = getTableMetadata(tableName);
+
+      // Get each item
+      for (Map<String, AttributeValue> key : keysAndAttributes.keys()) {
+        final GetItemRequest getRequest = GetItemRequest.builder()
+            .tableName(tableName)
+            .key(key)
+            .projectionExpression(keysAndAttributes.projectionExpression())
+            .expressionAttributeNames(keysAndAttributes.expressionAttributeNames())
+            .build();
+
+        final GetItemResponse getResponse = getItem(getRequest);
+        if (getResponse.hasItem() && !getResponse.item().isEmpty()) {
+          items.add(getResponse.item());
+        }
+      }
+
+      if (!items.isEmpty()) {
+        responses.put(tableName, items);
+      }
+    }
+
+    return BatchGetItemResponse.builder()
+        .responses(responses)
+        .build();
+  }
+
+  /**
+   * Batch write (put or delete) items to one or more tables.
+   *
+   * @param request the batch write item request
+   * @return the batch write item response
+   */
+  public BatchWriteItemResponse batchWriteItem(final BatchWriteItemRequest request) {
+    log.trace("batchWriteItem({})", request);
+
+    // Process each table in the request
+    for (Map.Entry<String, List<WriteRequest>> entry : request.requestItems().entrySet()) {
+      final String tableName = entry.getKey();
+      final List<WriteRequest> writeRequests = entry.getValue();
+
+      // Verify table exists
+      final PdbMetadata metadata = getTableMetadata(tableName);
+
+      // Process each write request
+      for (WriteRequest writeRequest : writeRequests) {
+        if (writeRequest.putRequest() != null) {
+          // Handle PutRequest
+          final PutRequest putRequest = writeRequest.putRequest();
+          putItem(PutItemRequest.builder()
+              .tableName(tableName)
+              .item(putRequest.item())
+              .build());
+        } else if (writeRequest.deleteRequest() != null) {
+          // Handle DeleteRequest
+          final DeleteRequest deleteRequest = writeRequest.deleteRequest();
+          deleteItem(DeleteItemRequest.builder()
+              .tableName(tableName)
+              .key(deleteRequest.key())
+              .build());
+        }
+      }
+    }
+
+    // Return empty response (no unprocessed items in this simple implementation)
+    return BatchWriteItemResponse.builder().build();
   }
 }

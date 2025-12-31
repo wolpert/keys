@@ -783,4 +783,130 @@ public class ItemOperationsTest extends BaseEndToEndTest {
         .build());
     assertThat(getResponse.item().get("status").s()).isEqualTo("active");
   }
+
+  @Test
+  void batchGetItem_retrievesMultipleItems() {
+    // Put some items first
+    for (int i = 0; i < 3; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s("batch-user-" + i).build(),
+              SORT_KEY, AttributeValue.builder().s("2024-01-0" + (i + 1) + "T00:00:00Z").build(),
+              "name", AttributeValue.builder().s("Batch User " + i).build()
+          ))
+          .build());
+    }
+
+    // Batch get items
+    final software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse response = client.batchGetItem(
+        software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes.builder()
+                    .keys(
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-0").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+                        ),
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-1").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build()
+                        ),
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-2").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build()
+                        )
+                    )
+                    .build()
+            ))
+            .build()
+    );
+
+    assertThat(response.responses()).containsKey(TABLE_NAME);
+    assertThat(response.responses().get(TABLE_NAME)).hasSize(3);
+    assertThat(response.responses().get(TABLE_NAME).get(0)).containsKey("name");
+  }
+
+  @Test
+  void batchWriteItem_putsAndDeletesMultipleItems() {
+    // Put initial items to delete
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "name", AttributeValue.builder().s("To Delete").build()
+        ))
+        .build());
+
+    // Batch write - put 2 new items and delete 1 existing item
+    client.batchWriteItem(
+        software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, List.of(
+                    // Put request 1
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-write-user-1").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+                                "name", AttributeValue.builder().s("Batch Write User 1").build()
+                            ))
+                            .build())
+                        .build(),
+                    // Put request 2
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-write-user-2").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+                                "name", AttributeValue.builder().s("Batch Write User 2").build()
+                            ))
+                            .build())
+                        .build(),
+                    // Delete request
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .deleteRequest(software.amazon.awssdk.services.dynamodb.model.DeleteRequest.builder()
+                            .key(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+                            ))
+                            .build())
+                        .build()
+                )
+            ))
+            .build()
+    );
+
+    // Verify the puts
+    final GetItemResponse getResponse1 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-write-user-1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse1.hasItem()).isTrue();
+    assertThat(getResponse1.item().get("name").s()).isEqualTo("Batch Write User 1");
+
+    final GetItemResponse getResponse2 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-write-user-2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse2.hasItem()).isTrue();
+    assertThat(getResponse2.item().get("name").s()).isEqualTo("Batch Write User 2");
+
+    // Verify the delete
+    final GetItemResponse getResponseDel = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponseDel.hasItem()).isFalse();
+  }
 }

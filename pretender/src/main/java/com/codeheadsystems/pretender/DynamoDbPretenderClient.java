@@ -13,6 +13,10 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
@@ -136,5 +140,15 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
   @Override
   public ScanResponse scan(final ScanRequest scanRequest) throws AwsServiceException, SdkClientException {
     return pdbItemManager.scan(scanRequest);
+  }
+
+  @Override
+  public BatchGetItemResponse batchGetItem(final BatchGetItemRequest batchGetItemRequest) throws AwsServiceException, SdkClientException {
+    return pdbItemManager.batchGetItem(batchGetItemRequest);
+  }
+
+  @Override
+  public BatchWriteItemResponse batchWriteItem(final BatchWriteItemRequest batchWriteItemRequest) throws AwsServiceException, SdkClientException {
+    return pdbItemManager.batchWriteItem(batchWriteItemRequest);
   }
 }
