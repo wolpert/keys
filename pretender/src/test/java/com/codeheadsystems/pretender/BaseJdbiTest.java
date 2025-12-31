@@ -21,9 +21,12 @@ import static com.codeheadsystems.pretender.dagger.PretenderModule.LIQUIBASE_SET
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
 import com.codeheadsystems.dbu.model.ImmutableDatabase;
+import com.codeheadsystems.pretender.dao.GsiListArgumentFactory;
+import com.codeheadsystems.pretender.dao.GsiListColumnMapper;
 import com.codeheadsystems.pretender.dagger.PretenderModule;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +48,11 @@ public abstract class BaseJdbiTest {
         ).build();
     jdbi = new JdbiFactory(configuration.database(), new PretenderModule().immutableClasses()).createJdbi();
     new LiquibaseHelper().runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
+
+    // Register custom mappers for GSI list serialization
+    final ObjectMapper objectMapper = new ObjectMapper();
+    jdbi.registerArgument(new GsiListArgumentFactory(objectMapper));
+    jdbi.registerColumnMapper(new GsiListColumnMapper(objectMapper));
   }
 
 }

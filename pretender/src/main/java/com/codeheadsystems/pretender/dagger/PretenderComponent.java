@@ -1,7 +1,9 @@
 package com.codeheadsystems.pretender.dagger;
 
 import com.codeheadsystems.pretender.DynamoDbPretenderClient;
+import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.model.Configuration;
+import com.codeheadsystems.pretender.service.TtlCleanupService;
 import dagger.Component;
 import javax.inject.Singleton;
 
@@ -28,4 +30,18 @@ public interface PretenderComponent {
    * @return the pretender database manager
    */
   DynamoDbPretenderClient dynamoDbPretenderClient();
+
+  /**
+   * PDB table manager.
+   *
+   * @return the pdb table manager
+   */
+  PdbTableManager pdbTableManager();
+
+  /**
+   * TTL cleanup service.
+   *
+   * @return the ttl cleanup service
+   */
+  TtlCleanupService ttlCleanupService();
 }

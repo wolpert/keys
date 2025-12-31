@@ -104,4 +104,27 @@ public class PdbTableManager {
     log.trace("listPdbTables()");
     return pdbMetadataDao.listTableNames();
   }
+
+  /**
+   * Enable TTL on a table.
+   *
+   * @param tableName        the table name
+   * @param ttlAttributeName the TTL attribute name
+   */
+  public void enableTtl(final String tableName, final String ttlAttributeName) {
+    log.trace("enableTtl({}, {})", tableName, ttlAttributeName);
+    pdbMetadataDao.updateTtl(tableName, ttlAttributeName, true);
+    log.info("Enabled TTL on table {} with attribute {}", tableName, ttlAttributeName);
+  }
+
+  /**
+   * Disable TTL on a table.
+   *
+   * @param tableName the table name
+   */
+  public void disableTtl(final String tableName) {
+    log.trace("disableTtl({})", tableName);
+    pdbMetadataDao.updateTtl(tableName, null, false);
+    log.info("Disabled TTL on table {}", tableName);
+  }
 }

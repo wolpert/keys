@@ -36,7 +36,8 @@ public interface PdbMetadataDao {
    * @param pdbMetadata the pdb table
    * @return the boolean
    */
-  @SqlUpdate("insert into PDB_TABLE (NAME, HASH_KEY, SORT_KEY, CREATE_DATE) values (:name, :hashKey, :sortKey, :createDate)")
+  @SqlUpdate("insert into PDB_TABLE (NAME, HASH_KEY, SORT_KEY, GLOBAL_SECONDARY_INDEXES, TTL_ATTRIBUTE_NAME, TTL_ENABLED, CREATE_DATE) "
+      + "values (:name, :hashKey, :sortKey, :globalSecondaryIndexes, :ttlAttributeName, :ttlEnabled, :createDate)")
   boolean insert(@BindPojo PdbMetadata pdbMetadata);
 
   /**
@@ -47,5 +48,18 @@ public interface PdbMetadataDao {
    */
   @SqlUpdate("delete from PDB_TABLE where NAME = :name")
   boolean delete(@Bind("name") String name);
+
+  /**
+   * Update TTL settings.
+   *
+   * @param name              the table name
+   * @param ttlAttributeName the TTL attribute name
+   * @param ttlEnabled       whether TTL is enabled
+   * @return the boolean
+   */
+  @SqlUpdate("update PDB_TABLE set TTL_ATTRIBUTE_NAME = :ttlAttributeName, TTL_ENABLED = :ttlEnabled where NAME = :name")
+  boolean updateTtl(@Bind("name") String name,
+                    @Bind("ttlAttributeName") String ttlAttributeName,
+                    @Bind("ttlEnabled") boolean ttlEnabled);
 
 }

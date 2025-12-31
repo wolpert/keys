@@ -3,6 +3,7 @@ package com.codeheadsystems.pretender.dagger;
 import com.codeheadsystems.pretender.dao.PdbMetadataDao;
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
+import com.codeheadsystems.pretender.model.PdbGlobalSecondaryIndex;
 import com.codeheadsystems.pretender.model.PdbItem;
 import com.codeheadsystems.pretender.model.PdbMetadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,14 +37,21 @@ public class PretenderModule {
    *
    * @param factory         the factory
    * @param liquibaseHelper the liquibase helper
+   * @param objectMapper    the object mapper
    * @return the jdbi
    */
   @Provides
   @Singleton
   public Jdbi jdbi(final JdbiFactory factory,
-                   final LiquibaseHelper liquibaseHelper) {
+                   final LiquibaseHelper liquibaseHelper,
+                   final ObjectMapper objectMapper) {
     final Jdbi jdbi = factory.createJdbi();
     liquibaseHelper.runLiquibase(jdbi, LIQUIBASE_SETUP_XML);
+
+    // Register custom mappers for GSI list serialization
+    jdbi.registerArgument(new com.codeheadsystems.pretender.dao.GsiListArgumentFactory(objectMapper));
+    jdbi.registerColumnMapper(new com.codeheadsystems.pretender.dao.GsiListColumnMapper(objectMapper));
+
     return jdbi;
     }
 
@@ -56,7 +64,7 @@ public class PretenderModule {
     @Singleton
     @Named(JdbiFactory.IMMUTABLES)
     public Set<Class<?>> immutableClasses() {
-      return Set.of(PdbMetadata.class, PdbItem.class);
+      return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class);
     }
 
   /**
@@ -67,7 +75,13 @@ public class PretenderModule {
   @Provides
   @Singleton
   public ObjectMapper objectMapper() {
-    return new ObjectMapper();
+    final ObjectMapper objectMapper = new ObjectMapper();
+    // Configure to handle unknown properties gracefully
+    objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    // Enable detection of fields without getters (for Immutables)
+    objectMapper.setVisibility(com.fasterxml.jackson.annotation.PropertyAccessor.FIELD,
+        com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY);
+    return objectMapper;
   }
 
   /**

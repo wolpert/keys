@@ -52,11 +52,13 @@ class PdbItemManagerTest {
   private static final Instant NOW = Instant.parse("2024-01-01T00:00:00Z");
 
   @Mock private PdbTableManager tableManager;
+  @Mock private PdbItemTableManager itemTableManager;
   @Mock private PdbItemDao itemDao;
   @Mock private ItemConverter itemConverter;
   @Mock private AttributeValueConverter attributeValueConverter;
   @Mock private KeyConditionExpressionParser keyConditionExpressionParser;
   @Mock private UpdateExpressionParser updateExpressionParser;
+  @Mock private GsiProjectionHelper gsiProjectionHelper;
   @Mock private Clock clock;
 
   private PdbItemManager manager;
@@ -64,8 +66,9 @@ class PdbItemManagerTest {
 
   @BeforeEach
   void setup() {
-    manager = new PdbItemManager(tableManager, itemDao, itemConverter,
-        attributeValueConverter, keyConditionExpressionParser, updateExpressionParser, clock);
+    manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
+        attributeValueConverter, keyConditionExpressionParser, updateExpressionParser,
+        gsiProjectionHelper, clock);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)
