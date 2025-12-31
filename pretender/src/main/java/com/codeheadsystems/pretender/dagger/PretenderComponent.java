@@ -60,4 +60,18 @@ public interface PretenderComponent {
    * @return the stream cleanup service
    */
   StreamCleanupService streamCleanupService();
+
+  /**
+   * PDB stream DAO (for testing).
+   *
+   * @return the pdb stream dao
+   */
+  com.codeheadsystems.pretender.dao.PdbStreamDao pdbStreamDao();
+
+  /**
+   * PDB stream table manager (for testing).
+   *
+   * @return the pdb stream table manager
+   */
+  com.codeheadsystems.pretender.manager.PdbStreamTableManager pdbStreamTableManager();
 }

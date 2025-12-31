@@ -129,9 +129,9 @@ public class StreamCleanupService {
 
   /**
    * Runs a single cleanup cycle.
-   * Package-private for testing.
+   * Public for testing.
    */
-  void runCleanup() {
+  public void runCleanup() {
     try {
       log.debug("Starting stream cleanup cycle");
       final long startTime = System.currentTimeMillis();

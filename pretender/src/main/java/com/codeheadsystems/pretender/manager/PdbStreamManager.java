@@ -160,19 +160,19 @@ public class PdbStreamManager {
 
     // Determine starting sequence number based on iterator type
     final long sequenceNumber = switch (type) {
-      case TRIM_HORIZON -> streamDao.getTrimHorizon(streamTableName);
+      case TRIM_HORIZON -> 0; // Start from beginning (before first record)
       case LATEST -> streamDao.getLatestSequenceNumber(streamTableName) + 1;
       case AT_SEQUENCE_NUMBER -> {
         if (request.sequenceNumber() == null) {
           throw new IllegalArgumentException("sequenceNumber required for AT_SEQUENCE_NUMBER");
         }
-        yield Long.parseLong(request.sequenceNumber());
+        yield Long.parseLong(request.sequenceNumber()) - 1; // getRecords uses >, so subtract 1 to include this record
       }
       case AFTER_SEQUENCE_NUMBER -> {
         if (request.sequenceNumber() == null) {
           throw new IllegalArgumentException("sequenceNumber required for AFTER_SEQUENCE_NUMBER");
         }
-        yield Long.parseLong(request.sequenceNumber()) + 1;
+        yield Long.parseLong(request.sequenceNumber()); // getRecords uses >, so this is correct
       }
       default -> throw new IllegalArgumentException("Unsupported iterator type: " + type);
     };
@@ -240,7 +240,7 @@ public class PdbStreamManager {
       final ShardIterator nextIter = ImmutableShardIterator.builder()
           .tableName(tableName)
           .shardId(SHARD_ID)
-          .sequenceNumber(lastSequence + 1)
+          .sequenceNumber(lastSequence) // Don't add 1 - AFTER_SEQUENCE_NUMBER means "after this"
           .type(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
           .build();
       nextIterator = shardIteratorCodec.encode(nextIter);

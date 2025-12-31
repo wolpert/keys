@@ -128,7 +128,6 @@ class PdbStreamManagerTest {
 
     when(metadataDao.getTable(TABLE_NAME)).thenReturn(Optional.of(metadata));
     when(streamTableManager.getStreamTableName(TABLE_NAME)).thenReturn(STREAM_TABLE_NAME);
-    when(streamDao.getTrimHorizon(STREAM_TABLE_NAME)).thenReturn(1L);
     when(shardIteratorCodec.encode(any())).thenReturn("encoded-iterator");
 
     final GetShardIteratorResponse response = manager.getShardIterator(
