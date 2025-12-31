@@ -3,6 +3,7 @@ package com.codeheadsystems.pretender.manager;
 import com.codeheadsystems.pretender.converter.AttributeValueConverter;
 import com.codeheadsystems.pretender.converter.ItemConverter;
 import com.codeheadsystems.pretender.dao.PdbItemDao;
+import com.codeheadsystems.pretender.expression.ConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.KeyConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.UpdateExpressionParser;
 import com.codeheadsystems.pretender.model.PdbGlobalSecondaryIndex;
@@ -20,6 +21,7 @@ import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
@@ -49,6 +51,7 @@ public class PdbItemManager {
   private final PdbItemDao itemDao;
   private final ItemConverter itemConverter;
   private final AttributeValueConverter attributeValueConverter;
+  private final ConditionExpressionParser conditionExpressionParser;
   private final KeyConditionExpressionParser keyConditionExpressionParser;
   private final UpdateExpressionParser updateExpressionParser;
   private final GsiProjectionHelper gsiProjectionHelper;
@@ -62,6 +65,7 @@ public class PdbItemManager {
    * @param itemDao                        the item dao
    * @param itemConverter                  the item converter
    * @param attributeValueConverter        the attribute value converter
+   * @param conditionExpressionParser      the condition expression parser
    * @param keyConditionExpressionParser   the key condition expression parser
    * @param updateExpressionParser         the update expression parser
    * @param gsiProjectionHelper            the GSI projection helper
@@ -73,18 +77,20 @@ public class PdbItemManager {
                         final PdbItemDao itemDao,
                         final ItemConverter itemConverter,
                         final AttributeValueConverter attributeValueConverter,
+                        final ConditionExpressionParser conditionExpressionParser,
                         final KeyConditionExpressionParser keyConditionExpressionParser,
                         final UpdateExpressionParser updateExpressionParser,
                         final GsiProjectionHelper gsiProjectionHelper,
                         final Clock clock) {
-    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {})",
+    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         tableManager, itemTableManager, itemDao, itemConverter, attributeValueConverter,
-        keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper, clock);
+        conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper, clock);
     this.tableManager = tableManager;
     this.itemTableManager = itemTableManager;
     this.itemDao = itemDao;
     this.itemConverter = itemConverter;
     this.attributeValueConverter = attributeValueConverter;
+    this.conditionExpressionParser = conditionExpressionParser;
     this.keyConditionExpressionParser = keyConditionExpressionParser;
     this.updateExpressionParser = updateExpressionParser;
     this.gsiProjectionHelper = gsiProjectionHelper;
@@ -103,11 +109,45 @@ public class PdbItemManager {
     final String tableName = request.tableName();
     final PdbMetadata metadata = getTableMetadata(tableName);
 
+    // Extract key values
+    final String hashKeyValue = attributeValueConverter.extractKeyValue(request.item(), metadata.hashKey());
+    final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+        attributeValueConverter.extractKeyValue(request.item(), sk));
+
+    // Check if item exists (needed for both condition check and upsert logic)
+    final Optional<PdbItem> existingPdbItem = itemDao.get(itemTableName(tableName), hashKeyValue, sortKeyValue);
+
+    // Check condition expression if provided
+    if (request.conditionExpression() != null && !request.conditionExpression().isBlank()) {
+      // Convert existing item to AttributeValue map (null if doesn't exist)
+      final Map<String, AttributeValue> existingItem = existingPdbItem
+          .map(item -> attributeValueConverter.fromJson(item.attributesJson()))
+          .orElse(null);
+
+      // Evaluate condition
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          existingItem,
+          request.conditionExpression(),
+          request.expressionAttributeValues(),
+          request.expressionAttributeNames()
+      );
+
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("The conditional request failed")
+            .build();
+      }
+    }
+
     // Convert to PdbItem
     final PdbItem pdbItem = itemConverter.toPdbItem(tableName, request.item(), metadata);
 
-    // Insert or replace in main table
-    itemDao.insert(itemTableName(tableName), pdbItem);
+    // Insert or update (putItem is an upsert operation)
+    if (existingPdbItem.isPresent()) {
+      itemDao.update(itemTableName(tableName), pdbItem);
+    } else {
+      itemDao.insert(itemTableName(tableName), pdbItem);
+    }
 
     // Maintain GSI tables
     maintainGsiTables(metadata, request.item(), pdbItem);
@@ -251,14 +291,33 @@ public class PdbItemManager {
     final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
         attributeValueConverter.extractKeyValue(request.key(), sk));
 
-    // Get old item (needed for return values and GSI deletion)
+    // Get old item (needed for return values, condition check, and GSI deletion)
     Map<String, AttributeValue> oldItem = null;
     final Optional<PdbItem> pdbItem = itemDao.get(
         itemTableName(tableName), hashKeyValue, sortKeyValue);
     if (pdbItem.isPresent()) {
       oldItem = attributeValueConverter.fromJson(pdbItem.get().attributesJson());
+    }
 
-      // Delete from GSI tables first
+    // Check condition expression if provided
+    if (request.conditionExpression() != null && !request.conditionExpression().isBlank()) {
+      // Evaluate condition against existing item (null if doesn't exist)
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          oldItem,
+          request.conditionExpression(),
+          request.expressionAttributeValues(),
+          request.expressionAttributeNames()
+      );
+
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("The conditional request failed")
+            .build();
+      }
+    }
+
+    // Delete from GSI tables first if item exists
+    if (oldItem != null) {
       deleteFromGsiTables(metadata, oldItem);
     }
 

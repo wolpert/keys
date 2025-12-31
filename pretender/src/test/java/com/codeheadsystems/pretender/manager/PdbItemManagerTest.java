@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.codeheadsystems.pretender.converter.AttributeValueConverter;
 import com.codeheadsystems.pretender.converter.ItemConverter;
 import com.codeheadsystems.pretender.dao.PdbItemDao;
+import com.codeheadsystems.pretender.expression.ConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.KeyConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.UpdateExpressionParser;
 import com.codeheadsystems.pretender.model.ImmutablePdbItem;
@@ -56,6 +57,7 @@ class PdbItemManagerTest {
   @Mock private PdbItemDao itemDao;
   @Mock private ItemConverter itemConverter;
   @Mock private AttributeValueConverter attributeValueConverter;
+  @Mock private ConditionExpressionParser conditionExpressionParser;
   @Mock private KeyConditionExpressionParser keyConditionExpressionParser;
   @Mock private UpdateExpressionParser updateExpressionParser;
   @Mock private GsiProjectionHelper gsiProjectionHelper;
@@ -67,7 +69,7 @@ class PdbItemManagerTest {
   @BeforeEach
   void setup() {
     manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
-        attributeValueConverter, keyConditionExpressionParser, updateExpressionParser,
+        attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
         gsiProjectionHelper, clock);
 
     metadata = ImmutablePdbMetadata.builder()
