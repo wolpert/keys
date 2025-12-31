@@ -4,6 +4,7 @@ import com.codeheadsystems.pretender.DynamoDbPretenderClient;
 import com.codeheadsystems.pretender.DynamoDbStreamsPretenderClient;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
 import com.codeheadsystems.pretender.model.Configuration;
+import com.codeheadsystems.pretender.service.StreamCleanupService;
 import com.codeheadsystems.pretender.service.TtlCleanupService;
 import dagger.Component;
 import javax.inject.Singleton;
@@ -52,4 +53,11 @@ public interface PretenderComponent {
    * @return the dynamodb streams pretender client
    */
   DynamoDbStreamsPretenderClient dynamoDbStreamsPretenderClient();
+
+  /**
+   * Stream cleanup service.
+   *
+   * @return the stream cleanup service
+   */
+  StreamCleanupService streamCleanupService();
 }
