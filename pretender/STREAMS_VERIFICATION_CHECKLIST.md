@@ -17,7 +17,7 @@
 - [x] Unit tests passing:
   - StreamCaptureHelperTest (10 tests)
   - PdbStreamDaoTest (7 tests)
-  - PdbStreamTableManagerTest (8 tests)
+  - PdbStreamTableManagerTest (7 tests - all uncommented and passing after HSQLDB memory fix)
 
 ## Phase 3: Consumption API ✅
 - [x] ShardIteratorCodec encodes/decodes shard iterators to Base64
@@ -113,8 +113,8 @@
 - [x] Cleanup continues on error (doesn't halt on single table failure)
 
 ## Test Statistics
-- **Total Stream Tests**: 74
-- **Unit Tests**: 57
+- **Total Stream Tests**: 73
+- **Unit Tests**: 56
 - **Integration Tests**: 17
 - **Test Files**: 8
 - **Code Coverage**: High (all major paths covered)

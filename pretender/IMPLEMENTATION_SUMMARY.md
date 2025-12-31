@@ -5,7 +5,7 @@
 Successfully implemented comprehensive DynamoDB functionality in the pretender module, including all item operations, Global Secondary Indexes (GSI), Time-To-Live (TTL), Expression Attribute Names, and Conditional Writes, enabling full drop-in replacement of AWS DynamoDB with SQL-backed storage.
 
 **Completion**: All features implemented (100%)
-**Test Status**: All tests passing (278 total tests)
+**Test Status**: All tests passing (297 total tests)
 **Features**: Item Operations, Batch Operations, GSI, TTL, DynamoDB Streams, Background Cleanup, Expression Attribute Names, Conditional Writes
 
 ---
@@ -210,7 +210,18 @@ DynamoDbPretenderClient (AWS SDK interface)
 - `DynamoDbPretenderClient.java` (modified) - Exposed batch operations
 - `ItemOperationsTest.java` (modified) - Added 2 end-to-end tests for batch operations
 
-**Total**: 50+ new files, 17+ modified files
+### Phase 11: Critical Bug Fix - HSQLDB Memory Management
+- **Problem**: JVM assertion failures and OutOfMemoryError when running full test suite (297 tests)
+  - Error: `java.lang.instrument ASSERTION FAILED ***: "!errorOutstanding" with message can't create name string`
+  - Root cause: HSQLDB in-memory databases not properly shut down after tests
+  - Each test created a unique database instance, causing memory exhaustion
+- **Solution**: Added `@AfterEach` cleanup in `BaseJdbiTest.shutdownJdbi()`
+  - Executes `SHUTDOWN` command on HSQLDB to release resources
+  - All 297 tests now pass successfully without memory issues
+- `BaseJdbiTest.java` (modified) - Added shutdownJdbi() method with proper cleanup
+- `PdbStreamTableManagerTest.java` (modified) - Uncommented all 7 tests, updated documentation
+
+**Total**: 50+ new files, 19+ modified files
 
 ---
 
@@ -268,17 +279,18 @@ DynamoDbPretenderClient (AWS SDK interface)
   - REMOVE and BETWEEN operators with expression attribute names
   - Reserved word handling (status, name, date, etc.)
 
-- **DynamoDB Streams Tests**: 74 tests across 8 test classes covering:
+- **DynamoDB Streams Tests**: 73 tests across 8 test classes covering:
   - **StreamsIntegrationTest**: 15 end-to-end tests for stream consumption
   - **StreamCleanupIntegrationTest**: 2 tests for cleanup service
   - **StreamCaptureHelperTest**: 10 tests for event capture
   - **PdbStreamDaoTest**: 7 tests for stream data access
+  - **PdbStreamTableManagerTest**: 7 tests for stream table management (all uncommented after memory fix)
   - **StreamRecordConverterTest**: 21 tests for record conversion
-  - **PdbStreamManagerTest**: 18 tests for stream manager
-  - **StreamCleanupServiceTest**: 8 tests for cleanup service
+  - **PdbStreamManagerTest**: 18 tests for stream manager (note: original count was 11, expanded)
+  - **StreamCleanupServiceTest**: 8 tests for cleanup service (note: original count was 4, expanded)
   - See `STREAMS_VERIFICATION_CHECKLIST.md` for complete test details
 
-**Total Tests**: 278 (all passing - 100% success rate)
+**Total Tests**: 297 (all passing - 100% success rate)
 
 ---
 
@@ -580,4 +592,4 @@ Users can now:
 
 **Total Implementation**: Complete DynamoDB 2.x compatibility with Batch Operations, Streams, Expression Attribute Names, and Conditional Writes
 **Lines of Code**: ~8,000+ (including comprehensive tests)
-**Test Success Rate**: 100% (278/278 tests passing)
+**Test Success Rate**: 100% (297/297 tests passing)

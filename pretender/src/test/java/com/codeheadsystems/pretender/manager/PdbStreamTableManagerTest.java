@@ -6,10 +6,12 @@ import com.codeheadsystems.pretender.BaseJdbiTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// TODO: Using the PdbStreamTableManager is creating exceptions at the JVM level, potentially just with HSQLDB.
-// The assertion failure is: java.lang.instrument ASSERTION FAILED ***: "!errorOutstanding" with message can't create name string at ./src/java.instrument/share/native/libinstrument/JPLISAgent.c line: 838
-// Need to re-evaluate if this is a problem with the test setup or something else.
-// These tests run if the test ONLY runs this class. Until its solved, consider the PdbStreamTableManager problematic.
+/**
+ * Tests for PdbStreamTableManager.
+ *
+ * Previously experienced JVM assertion failures due to OutOfMemoryError when running the full test suite.
+ * Fixed by adding proper HSQLDB shutdown in BaseJdbiTest.shutdownJdbi().
+ */
 class PdbStreamTableManagerTest extends BaseJdbiTest {
 
   private PdbStreamTableManager manager;
@@ -19,7 +21,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     manager = new PdbStreamTableManager(jdbi, configuration.database());
   }
 
-  //@Test
+  @Test
   void createStreamTable_createsTable() {
     final String tableName = "test-stream-table";
 
@@ -37,7 +39,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(tableExists).isTrue();
   }
 
-  //@Test
+  @Test
   void createStreamTable_hasAllRequiredColumns() {
     final String tableName = "column-test-table";
 
@@ -61,7 +63,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(columnCount).isEqualTo(12);
   }
 
-  //@Test
+  @Test
   void createStreamTable_hasPrimaryKey() {
     final String tableName = "pk-test-table";
 
@@ -89,7 +91,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(hasPrimaryKey).isTrue();
   }
 
-  //@Test
+  @Test
   void dropStreamTable_dropsTable() {
     final String tableName = "temp-stream-table";
 
@@ -109,7 +111,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(tableExists).isFalse();
   }
 
-  //@Test
+  @Test
   void createStreamTable_idempotent() {
     final String tableName = "idempotent-table";
 
@@ -129,7 +131,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(tableExists).isTrue();
   }
 
-  //@Test
+  @Test
   void dropStreamTable_idempotent() {
     final String tableName = "drop-test-table";
 
@@ -153,7 +155,7 @@ class PdbStreamTableManagerTest extends BaseJdbiTest {
     assertThat(tableExists).isFalse();
   }
 
-  //@Test
+  @Test
   void getStreamTableName_sanitizesName() {
     final String result = manager.getStreamTableName("My-Test@Table!");
 
