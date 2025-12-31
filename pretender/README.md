@@ -4,6 +4,11 @@ Provides for a AWS DynamoDB compatible library that works with Java.
 The resulting data is stored in a SQL database, primarily designed for
 PostgreSQL but not limited to it.
 
+# _WARNING_: This was built with Claude
+
+Slop warning... I'm in the process of reviewing the code, but consider it
+experimental until I can verify it works as intended and is well designed.
+
 ## Idea
 
 The ability to run DynamoDB locally for development that is provided

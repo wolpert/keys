@@ -3,7 +3,9 @@ package com.codeheadsystems.pretender.dagger;
 import com.codeheadsystems.pretender.dao.PdbMetadataDao;
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
+import com.codeheadsystems.pretender.model.PdbItem;
 import com.codeheadsystems.pretender.model.PdbMetadata;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dagger.Module;
 import dagger.Provides;
 import java.util.Set;
@@ -21,6 +23,13 @@ public class PretenderModule {
    * The constant LIQUIBASE_SETUP_XML.
    */
   public static final String LIQUIBASE_SETUP_XML = "liquibase/liquibase-setup.xml";
+
+  /**
+   * Instantiates a new Pretender module.
+   */
+  public PretenderModule() {
+    // Default constructor
+  }
 
   /**
    * Jebi jdbi.
@@ -47,8 +56,19 @@ public class PretenderModule {
     @Singleton
     @Named(JdbiFactory.IMMUTABLES)
     public Set<Class<?>> immutableClasses() {
-      return Set.of(PdbMetadata.class);
+      return Set.of(PdbMetadata.class, PdbItem.class);
     }
+
+  /**
+   * Object mapper for JSON serialization.
+   *
+   * @return the object mapper
+   */
+  @Provides
+  @Singleton
+  public ObjectMapper objectMapper() {
+    return new ObjectMapper();
+  }
 
   /**
    * PdbMetadata dao metadata dao.
