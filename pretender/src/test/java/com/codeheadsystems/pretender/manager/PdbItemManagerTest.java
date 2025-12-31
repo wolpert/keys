@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.codeheadsystems.pretender.converter.AttributeValueConverter;
 import com.codeheadsystems.pretender.converter.ItemConverter;
 import com.codeheadsystems.pretender.dao.PdbItemDao;
+import com.codeheadsystems.pretender.expression.ConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.KeyConditionExpressionParser;
 import com.codeheadsystems.pretender.expression.UpdateExpressionParser;
 import com.codeheadsystems.pretender.model.ImmutablePdbItem;
@@ -52,11 +53,15 @@ class PdbItemManagerTest {
   private static final Instant NOW = Instant.parse("2024-01-01T00:00:00Z");
 
   @Mock private PdbTableManager tableManager;
+  @Mock private PdbItemTableManager itemTableManager;
   @Mock private PdbItemDao itemDao;
   @Mock private ItemConverter itemConverter;
   @Mock private AttributeValueConverter attributeValueConverter;
+  @Mock private ConditionExpressionParser conditionExpressionParser;
   @Mock private KeyConditionExpressionParser keyConditionExpressionParser;
   @Mock private UpdateExpressionParser updateExpressionParser;
+  @Mock private GsiProjectionHelper gsiProjectionHelper;
+  @Mock private com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   @Mock private Clock clock;
 
   private PdbItemManager manager;
@@ -64,8 +69,9 @@ class PdbItemManagerTest {
 
   @BeforeEach
   void setup() {
-    manager = new PdbItemManager(tableManager, itemDao, itemConverter,
-        attributeValueConverter, keyConditionExpressionParser, updateExpressionParser, clock);
+    manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
+        attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
+        gsiProjectionHelper, streamCaptureHelper, clock);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)
@@ -403,7 +409,7 @@ class PdbItemManagerTest {
     );
 
     when(tableManager.getPdbTable(TABLE_NAME)).thenReturn(Optional.of(metadata));
-    when(keyConditionExpressionParser.parse("id = :id", values)).thenReturn(condition);
+    when(keyConditionExpressionParser.parse(eq("id = :id"), eq(values), any())).thenReturn(condition);
     when(itemDao.query(ITEM_TABLE_NAME, "123", null, Optional.empty(), 101))
         .thenReturn(List.of(item1));
     when(attributeValueConverter.fromJson(item1.attributesJson())).thenReturn(attr1);

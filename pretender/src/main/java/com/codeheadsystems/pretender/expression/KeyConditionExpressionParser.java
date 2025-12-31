@@ -20,14 +20,15 @@ public class KeyConditionExpressionParser {
   private static final Logger log = LoggerFactory.getLogger(KeyConditionExpressionParser.class);
 
   // Patterns for parsing key condition expressions
-  private static final Pattern HASH_KEY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*:(\\w+)");
-  private static final Pattern SORT_KEY_EQ_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s*=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_LT_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s*<\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_GT_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s*>\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_LE_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s*<=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_GE_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s*>=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_BETWEEN_PATTERN = Pattern.compile("AND\\s+(\\w+)\\s+BETWEEN\\s+:(\\w+)\\s+AND\\s+:(\\w+)", Pattern.CASE_INSENSITIVE);
-  private static final Pattern SORT_KEY_BEGINS_WITH_PATTERN = Pattern.compile("AND\\s+begins_with\\s*\\(\\s*(\\w+)\\s*,\\s*:(\\w+)\\s*\\)", Pattern.CASE_INSENSITIVE);
+  // Support both direct attribute names (userId) and expression attribute names (#user)
+  private static final Pattern HASH_KEY_PATTERN = Pattern.compile("^\\s*(#?\\w+)\\s*=\\s*:(\\w+)");
+  private static final Pattern SORT_KEY_EQ_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s*=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_LT_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s*<\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_GT_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s*>\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_LE_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s*<=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_GE_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s*>=\\s*:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_BETWEEN_PATTERN = Pattern.compile("AND\\s+(#?\\w+)\\s+BETWEEN\\s+:(\\w+)\\s+AND\\s+:(\\w+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SORT_KEY_BEGINS_WITH_PATTERN = Pattern.compile("AND\\s+begins_with\\s*\\(\\s*(#?\\w+)\\s*,\\s*:(\\w+)\\s*\\)", Pattern.CASE_INSENSITIVE);
 
   /**
    * Instantiates a new Key condition expression parser.
@@ -39,6 +40,7 @@ public class KeyConditionExpressionParser {
 
   /**
    * Parses a KeyConditionExpression and returns the SQL WHERE clause and sort key value.
+   * Backward-compatible overload without expression attribute names.
    *
    * @param keyConditionExpression      the key condition expression
    * @param expressionAttributeValues   the expression attribute values
@@ -46,7 +48,21 @@ public class KeyConditionExpressionParser {
    */
   public ParsedKeyCondition parse(final String keyConditionExpression,
                                    final Map<String, AttributeValue> expressionAttributeValues) {
-    log.trace("parse({}, {})", keyConditionExpression, expressionAttributeValues);
+    return parse(keyConditionExpression, expressionAttributeValues, null);
+  }
+
+  /**
+   * Parses a KeyConditionExpression and returns the SQL WHERE clause and sort key value.
+   *
+   * @param keyConditionExpression      the key condition expression
+   * @param expressionAttributeValues   the expression attribute values
+   * @param expressionAttributeNames    the expression attribute names (optional, can be null)
+   * @return the parsed result
+   */
+  public ParsedKeyCondition parse(final String keyConditionExpression,
+                                   final Map<String, AttributeValue> expressionAttributeValues,
+                                   final Map<String, String> expressionAttributeNames) {
+    log.trace("parse({}, {}, {})", keyConditionExpression, expressionAttributeValues, expressionAttributeNames);
 
     if (keyConditionExpression == null || keyConditionExpression.isBlank()) {
       throw new IllegalArgumentException("KeyConditionExpression cannot be null or empty");
@@ -57,6 +73,10 @@ public class KeyConditionExpressionParser {
     if (!hashMatcher.find()) {
       throw new IllegalArgumentException("Invalid KeyConditionExpression: missing hash key");
     }
+
+    // Resolve hash key attribute name (supports #placeholder)
+    final String hashKeyAttrName = resolveAttributeName(hashMatcher.group(1), expressionAttributeNames);
+    log.trace("Resolved hash key attribute: {}", hashKeyAttrName);
 
     final String hashKeyPlaceholder = hashMatcher.group(2);
     final AttributeValue hashKeyValue = expressionAttributeValues.get(":" + hashKeyPlaceholder);
@@ -71,6 +91,10 @@ public class KeyConditionExpressionParser {
     // Check for BETWEEN
     Matcher sortMatcher = SORT_KEY_BETWEEN_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder1 = sortMatcher.group(2);
       final String placeholder2 = sortMatcher.group(3);
       final AttributeValue value1 = expressionAttributeValues.get(":" + placeholder1);
@@ -86,6 +110,10 @@ public class KeyConditionExpressionParser {
     // Check for begins_with
     sortMatcher = SORT_KEY_BEGINS_WITH_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -99,6 +127,10 @@ public class KeyConditionExpressionParser {
     // Check for comparison operators
     sortMatcher = SORT_KEY_EQ_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -111,6 +143,10 @@ public class KeyConditionExpressionParser {
 
     sortMatcher = SORT_KEY_LT_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -123,6 +159,10 @@ public class KeyConditionExpressionParser {
 
     sortMatcher = SORT_KEY_GT_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -135,6 +175,10 @@ public class KeyConditionExpressionParser {
 
     sortMatcher = SORT_KEY_LE_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -147,6 +191,10 @@ public class KeyConditionExpressionParser {
 
     sortMatcher = SORT_KEY_GE_PATTERN.matcher(keyConditionExpression);
     if (sortMatcher.find()) {
+      // Resolve sort key attribute name (supports #placeholder)
+      final String sortKeyAttrName = resolveAttributeName(sortMatcher.group(1), expressionAttributeNames);
+      log.trace("Resolved sort key attribute: {}", sortKeyAttrName);
+
       final String placeholder = sortMatcher.group(2);
       final AttributeValue value = expressionAttributeValues.get(":" + placeholder);
       if (value == null) {
@@ -159,6 +207,27 @@ public class KeyConditionExpressionParser {
 
     // Hash key only
     return new ParsedKeyCondition(extractScalarValue(hashKeyValue), null, Optional.empty());
+  }
+
+  /**
+   * Resolve attribute name (handle expression attribute names).
+   *
+   * @param name  the attribute name or placeholder
+   * @param names the expression attribute names map
+   * @return the resolved attribute name
+   */
+  private String resolveAttributeName(final String name, final Map<String, String> names) {
+    if (name.startsWith("#")) {
+      if (names == null) {
+        throw new IllegalArgumentException("Expression attribute name used but expressionAttributeNames not provided: " + name);
+      }
+      final String resolved = names.get(name);
+      if (resolved == null) {
+        throw new IllegalArgumentException("Expression attribute name not found: " + name);
+      }
+      return resolved;
+    }
+    return name;
   }
 
   /**

@@ -21,19 +21,23 @@ public class PdbTableManager {
 
   private final PdbMetadataDao pdbMetadataDao;
   private final PdbItemTableManager pdbItemTableManager;
+  private final PdbStreamTableManager pdbStreamTableManager;
 
   /**
    * Instantiates a new PdbMetadata manager.
    *
-   * @param pdbMetadataDao       the dao
-   * @param pdbItemTableManager the item table manager
+   * @param pdbMetadataDao         the dao
+   * @param pdbItemTableManager    the item table manager
+   * @param pdbStreamTableManager  the stream table manager
    */
   @Inject
   public PdbTableManager(final PdbMetadataDao pdbMetadataDao,
-                         final PdbItemTableManager pdbItemTableManager) {
-    log.info("PdbTableManager({}, {})", pdbMetadataDao, pdbItemTableManager);
+                         final PdbItemTableManager pdbItemTableManager,
+                         final PdbStreamTableManager pdbStreamTableManager) {
+    log.info("PdbTableManager({}, {}, {})", pdbMetadataDao, pdbItemTableManager, pdbStreamTableManager);
     this.pdbMetadataDao = pdbMetadataDao;
     this.pdbItemTableManager = pdbItemTableManager;
+    this.pdbStreamTableManager = pdbStreamTableManager;
   }
 
   /**
@@ -103,5 +107,92 @@ public class PdbTableManager {
   public List<String> listPdbTables() {
     log.trace("listPdbTables()");
     return pdbMetadataDao.listTableNames();
+  }
+
+  /**
+   * Enable TTL on a table.
+   *
+   * @param tableName        the table name
+   * @param ttlAttributeName the TTL attribute name
+   */
+  public void enableTtl(final String tableName, final String ttlAttributeName) {
+    log.trace("enableTtl({}, {})", tableName, ttlAttributeName);
+    pdbMetadataDao.updateTtl(tableName, ttlAttributeName, true);
+    log.info("Enabled TTL on table {} with attribute {}", tableName, ttlAttributeName);
+  }
+
+  /**
+   * Disable TTL on a table.
+   *
+   * @param tableName the table name
+   */
+  public void disableTtl(final String tableName) {
+    log.trace("disableTtl({})", tableName);
+    pdbMetadataDao.updateTtl(tableName, null, false);
+    log.info("Disabled TTL on table {}", tableName);
+  }
+
+  /**
+   * Enable DynamoDB Streams on a table.
+   *
+   * @param tableName      the table name
+   * @param streamViewType the stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES)
+   */
+  public void enableStream(final String tableName, final String streamViewType) {
+    log.trace("enableStream({}, {})", tableName, streamViewType);
+
+    // Validate table exists
+    final Optional<PdbMetadata> metadata = getPdbTable(tableName);
+    if (metadata.isEmpty()) {
+      throw new IllegalArgumentException("Table not found: " + tableName);
+    }
+
+    // Create stream table if doesn't exist
+    pdbStreamTableManager.createStreamTable(tableName);
+
+    // Generate stream ARN and label
+    final String streamArn = generateStreamArn(tableName);
+    final String streamLabel = generateStreamLabel();
+
+    // Update metadata
+    pdbMetadataDao.updateStreamConfig(tableName, true, streamViewType, streamArn, streamLabel);
+
+    log.info("Enabled DynamoDB Streams on table {} with viewType {} (ARN: {})",
+        tableName, streamViewType, streamArn);
+  }
+
+  /**
+   * Disable DynamoDB Streams on a table.
+   * Note: Stream table is not dropped - records persist for potential 24-hour retention.
+   *
+   * @param tableName the table name
+   */
+  public void disableStream(final String tableName) {
+    log.trace("disableStream({})", tableName);
+    pdbMetadataDao.updateStreamConfig(tableName, false, null, null, null);
+    log.info("Disabled DynamoDB Streams on table {}", tableName);
+    // Note: Not dropping stream table - stream records should persist
+  }
+
+  /**
+   * Generates a stream ARN for a table.
+   * Format: arn:aws:dynamodb:us-east-1:123456789012:table/{tableName}/stream/{timestamp}
+   *
+   * @param tableName the table name
+   * @return the stream ARN
+   */
+  private String generateStreamArn(final String tableName) {
+    final long timestamp = System.currentTimeMillis();
+    return String.format("arn:aws:dynamodb:us-east-1:000000000000:table/%s/stream/%d",
+        tableName, timestamp);
+  }
+
+  /**
+   * Generates a stream label (timestamp-based identifier).
+   *
+   * @return the stream label
+   */
+  private String generateStreamLabel() {
+    return String.valueOf(System.currentTimeMillis());
   }
 }

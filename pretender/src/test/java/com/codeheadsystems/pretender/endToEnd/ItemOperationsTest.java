@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
@@ -519,5 +520,393 @@ public class ItemOperationsTest extends BaseEndToEndTest {
         .build());
 
     assertThat(afterDeleteQuery.items()).hasSize(2);
+  }
+
+  @Test
+  void putItem_withConditionExpression_attributeNotExists_success() {
+    // First put should succeed (item doesn't exist yet)
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("cond-user-1").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "name", AttributeValue.builder().s("Conditional User").build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .conditionExpression("attribute_not_exists(userId)")
+        .build();
+
+    final PutItemResponse putResponse = client.putItem(putRequest);
+    assertThat(putResponse).isNotNull();
+
+    // Verify item was created
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("cond-user-1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.item().get("name").s()).isEqualTo("Conditional User");
+  }
+
+  @Test
+  void putItem_withConditionExpression_attributeNotExists_fails() {
+    // Put an item first
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("cond-user-2").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "name", AttributeValue.builder().s("Original User").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Try to put again with condition that item doesn't exist - should fail
+    final Map<String, AttributeValue> newItem = Map.of(
+        HASH_KEY, AttributeValue.builder().s("cond-user-2").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "name", AttributeValue.builder().s("Updated User").build()
+    );
+
+    final PutItemRequest conditionalPutRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(newItem)
+        .conditionExpression("attribute_not_exists(userId)")
+        .build();
+
+    assertThatThrownBy(() -> client.putItem(conditionalPutRequest))
+        .isInstanceOf(ConditionalCheckFailedException.class)
+        .hasMessageContaining("conditional request failed");
+
+    // Verify original item still exists
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("cond-user-2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.item().get("name").s()).isEqualTo("Original User");
+  }
+
+  @Test
+  void putItem_withConditionExpression_attributeEquals_success() {
+    // Put an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("cond-user-3").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "status", AttributeValue.builder().s("pending").build(),
+        "version", AttributeValue.builder().n("1").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Update with condition that status = pending
+    final Map<String, AttributeValue> updatedItem = Map.of(
+        HASH_KEY, AttributeValue.builder().s("cond-user-3").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "status", AttributeValue.builder().s("active").build(),
+        "version", AttributeValue.builder().n("2").build()
+    );
+
+    final PutItemRequest conditionalPutRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(updatedItem)
+        .conditionExpression("#s = :pending AND #v = :version")
+        .expressionAttributeNames(Map.of("#s", "status", "#v", "version"))
+        .expressionAttributeValues(Map.of(
+            ":pending", AttributeValue.builder().s("pending").build(),
+            ":version", AttributeValue.builder().n("1").build()
+        ))
+        .build();
+
+    final PutItemResponse putResponse = client.putItem(conditionalPutRequest);
+    assertThat(putResponse).isNotNull();
+
+    // Verify update succeeded
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("cond-user-3").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.item().get("status").s()).isEqualTo("active");
+    assertThat(getResponse.item().get("version").n()).isEqualTo("2");
+  }
+
+  @Test
+  void deleteItem_withConditionExpression_attributeExists_success() {
+    // Put an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("del-user-1").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "name", AttributeValue.builder().s("To Delete").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Delete with condition that item exists
+    final DeleteItemRequest deleteRequest = DeleteItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .conditionExpression("attribute_exists(userId)")
+        .returnValues(ReturnValue.ALL_OLD)
+        .build();
+
+    final DeleteItemResponse deleteResponse = client.deleteItem(deleteRequest);
+    assertThat(deleteResponse.attributes()).isNotNull();
+    assertThat(deleteResponse.attributes().get("name").s()).isEqualTo("To Delete");
+
+    // Verify item was deleted
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.hasItem()).isFalse();
+  }
+
+  @Test
+  void deleteItem_withConditionExpression_attributeExists_fails() {
+    // Try to delete non-existent item with condition - should fail
+    final DeleteItemRequest deleteRequest = DeleteItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("nonexistent-user").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .conditionExpression("attribute_exists(userId)")
+        .build();
+
+    assertThatThrownBy(() -> client.deleteItem(deleteRequest))
+        .isInstanceOf(ConditionalCheckFailedException.class)
+        .hasMessageContaining("conditional request failed");
+  }
+
+  @Test
+  void deleteItem_withConditionExpression_attributeEquals_success() {
+    // Put an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("del-user-2").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "status", AttributeValue.builder().s("archived").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Delete only if status = archived
+    final DeleteItemRequest deleteRequest = DeleteItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .conditionExpression("#s = :archived")
+        .expressionAttributeNames(Map.of("#s", "status"))
+        .expressionAttributeValues(Map.of(
+            ":archived", AttributeValue.builder().s("archived").build()
+        ))
+        .build();
+
+    final DeleteItemResponse deleteResponse = client.deleteItem(deleteRequest);
+    assertThat(deleteResponse).isNotNull();
+
+    // Verify item was deleted
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.hasItem()).isFalse();
+  }
+
+  @Test
+  void deleteItem_withConditionExpression_attributeEquals_fails() {
+    // Put an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("del-user-3").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "status", AttributeValue.builder().s("active").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Try to delete with wrong status - should fail
+    final DeleteItemRequest deleteRequest = DeleteItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-3").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .conditionExpression("#s = :archived")
+        .expressionAttributeNames(Map.of("#s", "status"))
+        .expressionAttributeValues(Map.of(
+            ":archived", AttributeValue.builder().s("archived").build()
+        ))
+        .build();
+
+    assertThatThrownBy(() -> client.deleteItem(deleteRequest))
+        .isInstanceOf(ConditionalCheckFailedException.class)
+        .hasMessageContaining("conditional request failed");
+
+    // Verify item still exists
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("del-user-3").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.item().get("status").s()).isEqualTo("active");
+  }
+
+  @Test
+  void batchGetItem_retrievesMultipleItems() {
+    // Put some items first
+    for (int i = 0; i < 3; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s("batch-user-" + i).build(),
+              SORT_KEY, AttributeValue.builder().s("2024-01-0" + (i + 1) + "T00:00:00Z").build(),
+              "name", AttributeValue.builder().s("Batch User " + i).build()
+          ))
+          .build());
+    }
+
+    // Batch get items
+    final software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse response = client.batchGetItem(
+        software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes.builder()
+                    .keys(
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-0").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+                        ),
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-1").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build()
+                        ),
+                        Map.of(
+                            HASH_KEY, AttributeValue.builder().s("batch-user-2").build(),
+                            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build()
+                        )
+                    )
+                    .build()
+            ))
+            .build()
+    );
+
+    assertThat(response.responses()).containsKey(TABLE_NAME);
+    assertThat(response.responses().get(TABLE_NAME)).hasSize(3);
+    assertThat(response.responses().get(TABLE_NAME).get(0)).containsKey("name");
+  }
+
+  @Test
+  void batchWriteItem_putsAndDeletesMultipleItems() {
+    // Put initial items to delete
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "name", AttributeValue.builder().s("To Delete").build()
+        ))
+        .build());
+
+    // Batch write - put 2 new items and delete 1 existing item
+    client.batchWriteItem(
+        software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, List.of(
+                    // Put request 1
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-write-user-1").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+                                "name", AttributeValue.builder().s("Batch Write User 1").build()
+                            ))
+                            .build())
+                        .build(),
+                    // Put request 2
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-write-user-2").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+                                "name", AttributeValue.builder().s("Batch Write User 2").build()
+                            ))
+                            .build())
+                        .build(),
+                    // Delete request
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .deleteRequest(software.amazon.awssdk.services.dynamodb.model.DeleteRequest.builder()
+                            .key(Map.of(
+                                HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+                                SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+                            ))
+                            .build())
+                        .build()
+                )
+            ))
+            .build()
+    );
+
+    // Verify the puts
+    final GetItemResponse getResponse1 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-write-user-1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse1.hasItem()).isTrue();
+    assertThat(getResponse1.item().get("name").s()).isEqualTo("Batch Write User 1");
+
+    final GetItemResponse getResponse2 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-write-user-2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse2.hasItem()).isTrue();
+    assertThat(getResponse2.item().get("name").s()).isEqualTo("Batch Write User 2");
+
+    // Verify the delete
+    final GetItemResponse getResponseDel = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("batch-del-user").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponseDel.hasItem()).isFalse();
   }
 }
