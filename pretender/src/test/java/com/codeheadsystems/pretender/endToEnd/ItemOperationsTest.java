@@ -909,4 +909,234 @@ public class ItemOperationsTest extends BaseEndToEndTest {
         .build());
     assertThat(getResponseDel.hasItem()).isFalse();
   }
+
+  @Test
+  void query_withFilterExpression_filtersResults() {
+    // Put multiple items
+    final String hashKey = "user123";
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("active").build(),
+            "age", AttributeValue.builder().n("25").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("inactive").build(),
+            "age", AttributeValue.builder().n("30").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("active").build(),
+            "age", AttributeValue.builder().n("35").build()
+        ))
+        .build());
+
+    // Query with FilterExpression to only get active users
+    final QueryResponse response = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .filterExpression("#status = :statusVal")
+        .expressionAttributeNames(Map.of(
+            "#pk", HASH_KEY,
+            "#status", "status"
+        ))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":statusVal", AttributeValue.builder().s("active").build()
+        ))
+        .build());
+
+    // Should only return 2 items (the active ones)
+    assertThat(response.count()).isEqualTo(2);
+    assertThat(response.items()).hasSize(2);
+    assertThat(response.items()).allMatch(item -> item.get("status").s().equals("active"));
+  }
+
+  @Test
+  void query_withFilterExpression_comparisonOperators() {
+    // Put items with numeric attributes
+    final String hashKey = "user456";
+
+    for (int i = 1; i <= 5; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s("2024-01-0" + i + "T00:00:00Z").build(),
+              "score", AttributeValue.builder().n(String.valueOf(i * 10)).build()
+          ))
+          .build());
+    }
+
+    // Query with FilterExpression using comparison operator
+    final QueryResponse response = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("userId = :pk")
+        .filterExpression("score > :minScore")
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":minScore", AttributeValue.builder().n("30").build()
+        ))
+        .build());
+
+    // Should return items with score > 30 (40 and 50)
+    assertThat(response.count()).isEqualTo(2);
+    assertThat(response.items()).allMatch(item ->
+        Integer.parseInt(item.get("score").n()) > 30);
+  }
+
+  @Test
+  void scan_withFilterExpression_filtersResults() {
+    // Put multiple items
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "category", AttributeValue.builder().s("premium").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build(),
+            "category", AttributeValue.builder().s("basic").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user3").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build(),
+            "category", AttributeValue.builder().s("premium").build()
+        ))
+        .build());
+
+    // Scan with FilterExpression
+    final ScanResponse response = client.scan(ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .filterExpression("category = :cat")
+        .expressionAttributeValues(Map.of(
+            ":cat", AttributeValue.builder().s("premium").build()
+        ))
+        .build());
+
+    // Should only return 2 premium items
+    assertThat(response.count()).isEqualTo(2);
+    assertThat(response.items()).hasSize(2);
+    assertThat(response.items()).allMatch(item -> item.get("category").s().equals("premium"));
+  }
+
+  @Test
+  void scan_withFilterExpression_attributeFunctions() {
+    // Put items with/without certain attributes
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user1").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "email", AttributeValue.builder().s("user1@example.com").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user2").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build()
+            // No email attribute
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user3").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build(),
+            "email", AttributeValue.builder().s("user3@example.com").build()
+        ))
+        .build());
+
+    // Scan with FilterExpression using attribute_exists
+    final ScanResponse response = client.scan(ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .filterExpression("attribute_exists(email)")
+        .build());
+
+    // Should only return 2 items with email attribute
+    assertThat(response.count()).isEqualTo(2);
+    assertThat(response.items()).hasSize(2);
+    assertThat(response.items()).allMatch(item -> item.containsKey("email"));
+  }
+
+  @Test
+  void query_withFilterExpression_complexExpression() {
+    // Put items
+    final String hashKey = "user789";
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("active").build(),
+            "score", AttributeValue.builder().n("80").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-02T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("active").build(),
+            "score", AttributeValue.builder().n("40").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-03T00:00:00Z").build(),
+            "status", AttributeValue.builder().s("inactive").build(),
+            "score", AttributeValue.builder().n("90").build()
+        ))
+        .build());
+
+    // Query with complex FilterExpression (AND condition)
+    final QueryResponse response = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("userId = :pk")
+        .filterExpression("#status = :statusVal AND score >= :minScore")
+        .expressionAttributeNames(Map.of("#status", "status"))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":statusVal", AttributeValue.builder().s("active").build(),
+            ":minScore", AttributeValue.builder().n("50").build()
+        ))
+        .build());
+
+    // Should only return 1 item (active with score >= 50)
+    assertThat(response.count()).isEqualTo(1);
+    assertThat(response.items()).hasSize(1);
+    assertThat(response.items().get(0).get("score").n()).isEqualTo("80");
+  }
 }

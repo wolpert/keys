@@ -440,6 +440,19 @@ public class PdbItemManager {
         continue;
       }
 
+      // Apply FilterExpression if present (post-query filtering)
+      if (request.filterExpression() != null && !request.filterExpression().isBlank()) {
+        final boolean filterPassed = conditionExpressionParser.evaluate(
+            attributes,
+            request.filterExpression(),
+            request.expressionAttributeValues(),
+            request.expressionAttributeNames());
+        if (!filterPassed) {
+          log.trace("Item filtered out by FilterExpression");
+          continue;
+        }
+      }
+
       // Apply projection if present
       if (request.projectionExpression() != null && !request.projectionExpression().isBlank()) {
         attributes = itemConverter.applyProjection(attributes, request.projectionExpression());
@@ -501,6 +514,19 @@ public class PdbItemManager {
       if (isExpired(metadata, attributes)) {
         log.debug("Skipping expired item in scan results");
         continue;
+      }
+
+      // Apply FilterExpression if present (post-scan filtering)
+      if (request.filterExpression() != null && !request.filterExpression().isBlank()) {
+        final boolean filterPassed = conditionExpressionParser.evaluate(
+            attributes,
+            request.filterExpression(),
+            request.expressionAttributeValues(),
+            request.expressionAttributeNames());
+        if (!filterPassed) {
+          log.trace("Item filtered out by FilterExpression");
+          continue;
+        }
       }
 
       // Apply projection if present

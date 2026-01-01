@@ -5,8 +5,8 @@
 Successfully implemented comprehensive DynamoDB functionality in the pretender module, including all item operations, Global Secondary Indexes (GSI), Time-To-Live (TTL), Expression Attribute Names, and Conditional Writes, enabling full drop-in replacement of AWS DynamoDB with SQL-backed storage.
 
 **Completion**: All features implemented (100%)
-**Test Status**: All tests passing (297 total tests)
-**Features**: Item Operations, Batch Operations, GSI, TTL, DynamoDB Streams, Background Cleanup, Expression Attribute Names, Conditional Writes
+**Test Status**: All tests passing (302 total tests)
+**Features**: Item Operations, Batch Operations, GSI, TTL, DynamoDB Streams, Background Cleanup, Expression Attribute Names, Conditional Writes, FilterExpression
 
 ---
 
@@ -36,6 +36,10 @@ The implementation provides a **fully functional DynamoDB-compatible client** th
   - Comparison operators: `=`, `<>`, `<`, `>`, `<=`, `>=`, `BETWEEN`
   - Logical operators: `AND`, `OR`, `NOT` with proper precedence
   - Support for complex expressions with parentheses
+- FilterExpression: Post-query/post-scan filtering for query and scan operations
+  - All ConditionExpression operators and functions supported
+  - Filters applied after database query but before projection
+  - Works with all comparison operators, logical operators, and functions
 - Expression Attribute Names: Full `#placeholder` support for reserved words and special characters
 - Expression Attribute Values: `:placeholder` support
 - Complex expressions: `SET count = count + :inc`, `list_append()`, `if_not_exists()`
@@ -221,7 +225,23 @@ DynamoDbPretenderClient (AWS SDK interface)
 - `BaseJdbiTest.java` (modified) - Added shutdownJdbi() method with proper cleanup
 - `PdbStreamTableManagerTest.java` (modified) - Uncommented all 7 tests, updated documentation
 
-**Total**: 50+ new files, 19+ modified files
+### Phase 12: FilterExpression Support for Query and Scan
+- **Feature**: Post-query/post-scan filtering for query() and scan() operations
+- **Implementation**: Reuses existing ConditionExpressionParser for evaluation
+  - FilterExpression applied after TTL filtering but before projection
+  - Supports all operators: `=`, `<>`, `<`, `>`, `<=`, `>=`, `BETWEEN`
+  - Supports all functions: `attribute_exists()`, `attribute_not_exists()`, `begins_with()`, `contains()`
+  - Supports logical operators: `AND`, `OR`, `NOT` with proper precedence
+  - Works with Expression Attribute Names and Values
+- `PdbItemManager.java` (modified) - Added FilterExpression evaluation in query() and scan() methods
+- `ItemOperationsTest.java` (modified) - Added 5 comprehensive end-to-end tests:
+  - query_withFilterExpression_filtersResults
+  - query_withFilterExpression_comparisonOperators
+  - scan_withFilterExpression_filtersResults
+  - scan_withFilterExpression_attributeFunctions
+  - query_withFilterExpression_complexExpression
+
+**Total**: 50+ new files, 21+ modified files
 
 ---
 
@@ -239,7 +259,7 @@ DynamoDbPretenderClient (AWS SDK interface)
 - **TtlCleanupService**: 4 tests (lifecycle, cleanup logic, GSI cleanup)
 
 ### Integration Tests
-- **ItemOperationsTest**: 23 comprehensive end-to-end tests covering:
+- **ItemOperationsTest**: 28 comprehensive end-to-end tests covering:
   - Full CRUD lifecycle
   - Query with sort key conditions
   - Scan with pagination
@@ -248,6 +268,8 @@ DynamoDbPretenderClient (AWS SDK interface)
   - Conditional writes (putItem/deleteItem with ConditionExpression)
   - Conditional write failures (ConditionalCheckFailedException)
   - Batch operations (batchGetItem, batchWriteItem)
+  - FilterExpression with query (equality, comparison operators, complex AND conditions)
+  - FilterExpression with scan (attribute functions like attribute_exists)
   - Error handling (table not found, etc.)
 
 - **GsiTest**: 9 tests covering:
@@ -290,7 +312,7 @@ DynamoDbPretenderClient (AWS SDK interface)
   - **StreamCleanupServiceTest**: 8 tests for cleanup service (note: original count was 4, expanded)
   - See `STREAMS_VERIFICATION_CHECKLIST.md` for complete test details
 
-**Total Tests**: 297 (all passing - 100% success rate)
+**Total Tests**: 302 (all passing - 100% success rate)
 
 ---
 
@@ -545,8 +567,6 @@ client.putItem(PutItemRequest.builder()
 ## Future Enhancements (Not Yet Implemented)
 
 The following features were deliberately deferred but could be added:
-
-- **Filter Expressions**: Post-query filtering for query/scan operations
 - **Transactions**: TransactGetItems, TransactWriteItems
 - **Local Secondary Indexes (LSI)**: Additional index type beyond GSI
 - **PartiQL**: SQL-like query language
@@ -592,4 +612,4 @@ Users can now:
 
 **Total Implementation**: Complete DynamoDB 2.x compatibility with Batch Operations, Streams, Expression Attribute Names, and Conditional Writes
 **Lines of Code**: ~8,000+ (including comprehensive tests)
-**Test Success Rate**: 100% (297/297 tests passing)
+**Test Success Rate**: 100% (302/302 tests passing)
