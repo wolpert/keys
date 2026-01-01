@@ -44,6 +44,20 @@ import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.Get;
+import software.amazon.awssdk.services.dynamodb.model.Put;
+import software.amazon.awssdk.services.dynamodb.model.Update;
+import software.amazon.awssdk.services.dynamodb.model.Delete;
+import software.amazon.awssdk.services.dynamodb.model.ConditionCheck;
+import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
+import software.amazon.awssdk.services.dynamodb.model.CancellationReason;
 
 /**
  * Manager for DynamoDB item operations.
@@ -819,5 +833,232 @@ public class PdbItemManager {
 
     // Return empty response (no unprocessed items in this simple implementation)
     return BatchWriteItemResponse.builder().build();
+  }
+
+  /**
+   * Transactionally get items from one or more tables.
+   * All gets must succeed or the entire transaction fails.
+   *
+   * @param request the transact get items request
+   * @return the transact get items response with all retrieved items
+   * @throws TransactionCanceledException if any get operation fails or table doesn't exist
+   */
+  public TransactGetItemsResponse transactGetItems(final TransactGetItemsRequest request) {
+    log.trace("transactGetItems({})", request);
+
+    final List<ItemResponse> responses = new ArrayList<>();
+
+    try {
+      // Process each get operation
+      for (TransactGetItem transactGetItem : request.transactItems()) {
+        final Get get = transactGetItem.get();
+        final String tableName = get.tableName();
+
+        // Verify table exists (will throw ResourceNotFoundException if not)
+        getTableMetadata(tableName);
+
+        // Execute the get operation
+        final GetItemRequest getRequest = GetItemRequest.builder()
+            .tableName(tableName)
+            .key(get.key())
+            .projectionExpression(get.projectionExpression())
+            .expressionAttributeNames(get.expressionAttributeNames())
+            .build();
+
+        final GetItemResponse getResponse = getItem(getRequest);
+
+        // Build item response
+        final ItemResponse itemResponse = ItemResponse.builder()
+            .item(getResponse.item())
+            .build();
+
+        responses.add(itemResponse);
+      }
+
+      return TransactGetItemsResponse.builder()
+          .responses(responses)
+          .build();
+
+    } catch (ResourceNotFoundException e) {
+      // Convert to TransactionCanceledException
+      final CancellationReason reason = CancellationReason.builder()
+          .code("ResourceNotFound")
+          .message(e.getMessage())
+          .build();
+
+      throw TransactionCanceledException.builder()
+          .message("Transaction cancelled")
+          .cancellationReasons(reason)
+          .build();
+    } catch (Exception e) {
+      // Handle any other exception
+      final CancellationReason reason = CancellationReason.builder()
+          .code("InternalError")
+          .message(e.getMessage())
+          .build();
+
+      throw TransactionCanceledException.builder()
+          .message("Transaction cancelled")
+          .cancellationReasons(reason)
+          .build();
+    }
+  }
+
+  /**
+   * Transactionally write items to one or more tables.
+   * All writes must succeed (including condition checks) or the entire transaction fails.
+   * Supports Put, Update, Delete, and ConditionCheck operations.
+   *
+   * @param request the transact write items request
+   * @return the transact write items response (empty on success)
+   * @throws TransactionCanceledException if any write operation fails or condition check fails
+   */
+  public TransactWriteItemsResponse transactWriteItems(final TransactWriteItemsRequest request) {
+    log.trace("transactWriteItems({})", request);
+
+    final List<CancellationReason> cancellationReasons = new ArrayList<>();
+
+    try {
+      // Process each write operation
+      int index = 0;
+      for (TransactWriteItem transactWriteItem : request.transactItems()) {
+        try {
+          processTransactWriteItem(transactWriteItem);
+        } catch (ConditionalCheckFailedException e) {
+          // Condition check failed - build cancellation reason
+          final CancellationReason reason = CancellationReason.builder()
+              .code("ConditionalCheckFailed")
+              .message(e.getMessage())
+              .build();
+          cancellationReasons.add(reason);
+
+          // Transaction failed - throw exception
+          throw TransactionCanceledException.builder()
+              .message("Transaction cancelled due to conditional check failure")
+              .cancellationReasons(cancellationReasons)
+              .build();
+
+        } catch (ResourceNotFoundException e) {
+          // Table not found - build cancellation reason
+          final CancellationReason reason = CancellationReason.builder()
+              .code("ResourceNotFound")
+              .message(e.getMessage())
+              .build();
+          cancellationReasons.add(reason);
+
+          throw TransactionCanceledException.builder()
+              .message("Transaction cancelled due to resource not found")
+              .cancellationReasons(cancellationReasons)
+              .build();
+        }
+        index++;
+      }
+
+      // All operations succeeded
+      return TransactWriteItemsResponse.builder().build();
+
+    } catch (TransactionCanceledException e) {
+      // Re-throw transaction cancelled exceptions
+      throw e;
+    } catch (Exception e) {
+      // Handle any other unexpected exception
+      final CancellationReason reason = CancellationReason.builder()
+          .code("InternalError")
+          .message(e.getMessage())
+          .build();
+
+      throw TransactionCanceledException.builder()
+          .message("Transaction cancelled due to internal error")
+          .cancellationReasons(reason)
+          .build();
+    }
+  }
+
+  /**
+   * Processes a single transactional write item operation.
+   *
+   * @param transactWriteItem the transact write item
+   * @throws ConditionalCheckFailedException if a condition check fails
+   * @throws ResourceNotFoundException if the table doesn't exist
+   */
+  private void processTransactWriteItem(final TransactWriteItem transactWriteItem) {
+    if (transactWriteItem.put() != null) {
+      // Handle Put operation
+      final Put put = transactWriteItem.put();
+      putItem(PutItemRequest.builder()
+          .tableName(put.tableName())
+          .item(put.item())
+          .conditionExpression(put.conditionExpression())
+          .expressionAttributeNames(put.expressionAttributeNames())
+          .expressionAttributeValues(put.expressionAttributeValues())
+          .build());
+
+    } else if (transactWriteItem.update() != null) {
+      // Handle Update operation
+      final Update update = transactWriteItem.update();
+      updateItem(UpdateItemRequest.builder()
+          .tableName(update.tableName())
+          .key(update.key())
+          .updateExpression(update.updateExpression())
+          .conditionExpression(update.conditionExpression())
+          .expressionAttributeNames(update.expressionAttributeNames())
+          .expressionAttributeValues(update.expressionAttributeValues())
+          .build());
+
+    } else if (transactWriteItem.delete() != null) {
+      // Handle Delete operation
+      final Delete delete = transactWriteItem.delete();
+      deleteItem(DeleteItemRequest.builder()
+          .tableName(delete.tableName())
+          .key(delete.key())
+          .conditionExpression(delete.conditionExpression())
+          .expressionAttributeNames(delete.expressionAttributeNames())
+          .expressionAttributeValues(delete.expressionAttributeValues())
+          .build());
+
+    } else if (transactWriteItem.conditionCheck() != null) {
+      // Handle ConditionCheck operation
+      final ConditionCheck conditionCheck = transactWriteItem.conditionCheck();
+      final String tableName = conditionCheck.tableName();
+
+      // Verify table exists
+      final PdbMetadata metadata = getTableMetadata(tableName);
+
+      // Get the item to check condition against
+      final String itemTableName = itemTableManager.getItemTableName(tableName);
+      final String hashKeyValue = attributeValueConverter.extractKeyValue(
+          conditionCheck.key(), metadata.hashKey());
+      final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+          attributeValueConverter.extractKeyValue(conditionCheck.key(), sk));
+
+      final Optional<PdbItem> existingItem = itemDao.get(itemTableName, hashKeyValue, sortKeyValue);
+
+      // If condition expression is present, evaluate it
+      if (conditionCheck.conditionExpression() != null && !conditionCheck.conditionExpression().isBlank()) {
+        final Map<String, AttributeValue> currentItem = existingItem.isPresent()
+            ? attributeValueConverter.fromJson(existingItem.get().attributesJson())
+            : new HashMap<>();
+
+        final Map<String, String> expressionAttributeNames = conditionCheck.expressionAttributeNames() != null
+            ? conditionCheck.expressionAttributeNames()
+            : Collections.emptyMap();
+        final Map<String, AttributeValue> expressionAttributeValues = conditionCheck.expressionAttributeValues() != null
+            ? conditionCheck.expressionAttributeValues()
+            : Collections.emptyMap();
+
+        final boolean conditionMet = conditionExpressionParser.evaluate(
+            currentItem,
+            conditionCheck.conditionExpression(),
+            expressionAttributeValues,
+            expressionAttributeNames
+        );
+
+        if (!conditionMet) {
+          throw ConditionalCheckFailedException.builder()
+              .message("Condition check failed")
+              .build();
+        }
+      }
+    }
   }
 }

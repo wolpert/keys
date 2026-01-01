@@ -1139,4 +1139,309 @@ public class ItemOperationsTest extends BaseEndToEndTest {
     assertThat(response.items()).hasSize(1);
     assertThat(response.items().get(0).get("score").n()).isEqualTo("80");
   }
+
+  @Test
+  void transactGetItems_success() {
+    // Put test items
+    final String hashKey1 = "txn-get-1";
+    final String hashKey2 = "txn-get-2";
+    final String sortKey1 = "item-1";
+    final String sortKey2 = "item-2";
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+            SORT_KEY, AttributeValue.builder().s(sortKey1).build(),
+            "data", AttributeValue.builder().s("first item").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+            SORT_KEY, AttributeValue.builder().s(sortKey2).build(),
+            "data", AttributeValue.builder().s("second item").build()
+        ))
+        .build());
+
+    // Execute transactGetItems
+    final software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse response =
+        client.transactGetItems(software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest.builder()
+            .transactItems(
+                software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+                    .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+                            SORT_KEY, AttributeValue.builder().s(sortKey1).build()
+                        ))
+                        .build())
+                    .build(),
+                software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+                    .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+                            SORT_KEY, AttributeValue.builder().s(sortKey2).build()
+                        ))
+                        .build())
+                    .build()
+            )
+            .build());
+
+    // Verify both items were retrieved
+    assertThat(response.responses()).hasSize(2);
+    assertThat(response.responses().get(0).item().get("data").s()).isEqualTo("first item");
+    assertThat(response.responses().get(1).item().get("data").s()).isEqualTo("second item");
+  }
+
+  @Test
+  void transactWriteItems_allPuts_success() {
+    final String hashKey1 = "txn-put-1";
+    final String hashKey2 = "txn-put-2";
+
+    // Execute transactWriteItems with two puts
+    client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+        .transactItems(
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                    .tableName(TABLE_NAME)
+                    .item(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-1").build(),
+                        "value", AttributeValue.builder().n("100").build()
+                    ))
+                    .build())
+                .build(),
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                    .tableName(TABLE_NAME)
+                    .item(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-2").build(),
+                        "value", AttributeValue.builder().n("200").build()
+                    ))
+                    .build())
+                .build()
+        )
+        .build());
+
+    // Verify both items were created
+    final GetItemResponse item1 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build()
+        ))
+        .build());
+
+    final GetItemResponse item2 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+            SORT_KEY, AttributeValue.builder().s("item-2").build()
+        ))
+        .build());
+
+    assertThat(item1.item().get("value").n()).isEqualTo("100");
+    assertThat(item2.item().get("value").n()).isEqualTo("200");
+  }
+
+  @Test
+  void transactWriteItems_mixedOperations_success() {
+    final String hashKey = "txn-mixed";
+
+    // First create an item to update and delete
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-update").build(),
+            "value", AttributeValue.builder().n("10").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-delete").build(),
+            "value", AttributeValue.builder().n("20").build()
+        ))
+        .build());
+
+    // Execute transaction with Put, Update, and Delete
+    client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+        .transactItems(
+            // Put a new item
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                    .tableName(TABLE_NAME)
+                    .item(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-new").build(),
+                        "value", AttributeValue.builder().n("30").build()
+                    ))
+                    .build())
+                .build(),
+            // Update existing item
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .update(software.amazon.awssdk.services.dynamodb.model.Update.builder()
+                    .tableName(TABLE_NAME)
+                    .key(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-update").build()
+                    ))
+                    .updateExpression("SET #v = #v + :inc")
+                    .expressionAttributeNames(Map.of("#v", "value"))
+                    .expressionAttributeValues(Map.of(
+                        ":inc", AttributeValue.builder().n("5").build()
+                    ))
+                    .build())
+                .build(),
+            // Delete existing item
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .delete(software.amazon.awssdk.services.dynamodb.model.Delete.builder()
+                    .tableName(TABLE_NAME)
+                    .key(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-delete").build()
+                    ))
+                    .build())
+                .build()
+        )
+        .build());
+
+    // Verify new item was created
+    final GetItemResponse newItem = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-new").build()
+        ))
+        .build());
+    assertThat(newItem.item().get("value").n()).isEqualTo("30");
+
+    // Verify update was applied
+    final GetItemResponse updatedItem = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-update").build()
+        ))
+        .build());
+    assertThat(updatedItem.item().get("value").n()).isEqualTo("15");
+
+    // Verify item was deleted
+    final GetItemResponse deletedItem = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-delete").build()
+        ))
+        .build());
+    assertThat(deletedItem.hasItem()).isFalse();
+  }
+
+  @Test
+  void transactWriteItems_conditionCheckSuccess() {
+    final String hashKey = "txn-condition";
+
+    // Create item with version attribute
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build(),
+            "version", AttributeValue.builder().n("1").build(),
+            "data", AttributeValue.builder().s("original").build()
+        ))
+        .build());
+
+    // Execute transaction with condition check and update
+    client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+        .transactItems(
+            // Condition check - verify version is 1
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .conditionCheck(software.amazon.awssdk.services.dynamodb.model.ConditionCheck.builder()
+                    .tableName(TABLE_NAME)
+                    .key(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-1").build()
+                    ))
+                    .conditionExpression("version = :v")
+                    .expressionAttributeValues(Map.of(
+                        ":v", AttributeValue.builder().n("1").build()
+                    ))
+                    .build())
+                .build(),
+            // Update item
+            software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                .update(software.amazon.awssdk.services.dynamodb.model.Update.builder()
+                    .tableName(TABLE_NAME)
+                    .key(Map.of(
+                        HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                        SORT_KEY, AttributeValue.builder().s("item-1").build()
+                    ))
+                    .updateExpression("SET version = :newV, #d = :newData")
+                    .expressionAttributeNames(Map.of("#d", "data"))
+                    .expressionAttributeValues(Map.of(
+                        ":newV", AttributeValue.builder().n("2").build(),
+                        ":newData", AttributeValue.builder().s("updated").build()
+                    ))
+                    .build())
+                .build()
+        )
+        .build());
+
+    // Verify update was applied
+    final GetItemResponse item = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build()
+        ))
+        .build());
+
+    assertThat(item.item().get("version").n()).isEqualTo("2");
+    assertThat(item.item().get("data").s()).isEqualTo("updated");
+  }
+
+  @Test
+  void transactWriteItems_conditionCheckFailure() {
+    final String hashKey = "txn-fail";
+
+    // Create item with version attribute
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build(),
+            "version", AttributeValue.builder().n("2").build()
+        ))
+        .build());
+
+    // Attempt transaction with incorrect version check - should fail
+    assertThatThrownBy(() ->
+        client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+            .transactItems(
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .conditionCheck(software.amazon.awssdk.services.dynamodb.model.ConditionCheck.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("item-1").build()
+                        ))
+                        .conditionExpression("version = :v")
+                        .expressionAttributeValues(Map.of(
+                            ":v", AttributeValue.builder().n("1").build()  // Wrong version!
+                        ))
+                        .build())
+                    .build()
+            )
+            .build())
+    ).isInstanceOf(software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException.class);
+  }
 }

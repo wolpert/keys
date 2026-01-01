@@ -38,6 +38,10 @@ import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsResponse;
 
 /**
  * The type Dynamo db pretender client.
@@ -150,5 +154,15 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
   @Override
   public BatchWriteItemResponse batchWriteItem(final BatchWriteItemRequest batchWriteItemRequest) throws AwsServiceException, SdkClientException {
     return pdbItemManager.batchWriteItem(batchWriteItemRequest);
+  }
+
+  @Override
+  public TransactGetItemsResponse transactGetItems(final TransactGetItemsRequest transactGetItemsRequest) throws AwsServiceException, SdkClientException {
+    return pdbItemManager.transactGetItems(transactGetItemsRequest);
+  }
+
+  @Override
+  public TransactWriteItemsResponse transactWriteItems(final TransactWriteItemsRequest transactWriteItemsRequest) throws AwsServiceException, SdkClientException {
+    return pdbItemManager.transactWriteItems(transactWriteItemsRequest);
   }
 }
