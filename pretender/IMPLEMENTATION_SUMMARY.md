@@ -5,8 +5,8 @@
 Successfully implemented comprehensive DynamoDB functionality in the pretender module, including all item operations, Global Secondary Indexes (GSI), Time-To-Live (TTL), Expression Attribute Names, and Conditional Writes, enabling full drop-in replacement of AWS DynamoDB with SQL-backed storage.
 
 **Completion**: All features implemented (100%)
-**Test Status**: All tests passing (302 total tests)
-**Features**: Item Operations, Batch Operations, GSI, TTL, DynamoDB Streams, Background Cleanup, Expression Attribute Names, Conditional Writes, FilterExpression
+**Test Status**: All tests passing (307 total tests)
+**Features**: Item Operations, Batch Operations, Transactions, GSI, TTL, DynamoDB Streams, Background Cleanup, Expression Attribute Names, Conditional Writes, FilterExpression
 
 ---
 
@@ -18,7 +18,7 @@ The implementation provides a **fully functional DynamoDB-compatible client** th
 
 ### Key Features Implemented
 
-✅ **All 8 DynamoDB Item Operations**:
+✅ **All 10 DynamoDB Item Operations**:
 1. **putItem** - Insert or replace items
 2. **getItem** - Retrieve items with optional projection
 3. **updateItem** - Update items with UpdateExpression (SET, REMOVE, ADD, DELETE)
@@ -27,6 +27,8 @@ The implementation provides a **fully functional DynamoDB-compatible client** th
 6. **scan** - Full table scan with limit and pagination
 7. **batchGetItem** - Retrieve multiple items from one or more tables in a single request
 8. **batchWriteItem** - Put or delete multiple items across one or more tables
+9. **transactGetItems** - Atomically retrieve multiple items from one or more tables
+10. **transactWriteItems** - Atomically perform Put, Update, Delete, or ConditionCheck operations across one or more tables
 
 ✅ **Expression Support**:
 - KeyConditionExpression: `=`, `<`, `>`, `<=`, `>=`, `BETWEEN`, `begins_with()`
@@ -67,6 +69,14 @@ The implementation provides a **fully functional DynamoDB-compatible client** th
 - Support for all shard iterator types (TRIM_HORIZON, LATEST, AT_SEQUENCE_NUMBER, AFTER_SEQUENCE_NUMBER)
 - Auto-incrementing sequence numbers for record ordering
 - Stream table management with dynamic creation/deletion
+
+✅ **Transaction Support**:
+- TransactGetItems: Atomically retrieve up to 25 items from one or more tables
+- TransactWriteItems: Atomically write up to 25 items across one or more tables
+- Supported operations: Put, Update, Delete, ConditionCheck
+- All-or-nothing semantics: entire transaction succeeds or fails
+- Proper exception handling with TransactionCanceledException
+- ConditionCheck operation for read-your-writes consistency within transactions
 
 ✅ **Advanced Features**:
 - Projection expressions for selective attribute retrieval
@@ -241,7 +251,23 @@ DynamoDbPretenderClient (AWS SDK interface)
   - scan_withFilterExpression_attributeFunctions
   - query_withFilterExpression_complexExpression
 
-**Total**: 50+ new files, 21+ modified files
+### Phase 13: Transaction Support (TransactGetItems, TransactWriteItems)
+- **Feature**: Atomic multi-item operations across one or more tables
+- **Implementation**:
+  - TransactGetItems: Atomically retrieve multiple items (up to 25)
+  - TransactWriteItems: Atomically perform Put, Update, Delete, and ConditionCheck operations (up to 25)
+  - All-or-nothing semantics with proper TransactionCanceledException handling
+  - Support for ConditionCheck operation to verify conditions without modifying items
+- `PdbItemManager.java` (modified) - Added transactGetItems() and transactWriteItems() methods
+- `DynamoDbPretenderClient.java` (modified) - Exposed transaction operations
+- `ItemOperationsTest.java` (modified) - Added 5 comprehensive transaction tests:
+  - transactGetItems_success
+  - transactWriteItems_allPuts_success
+  - transactWriteItems_mixedOperations_success
+  - transactWriteItems_conditionCheckSuccess
+  - transactWriteItems_conditionCheckFailure
+
+**Total**: 50+ new files, 23+ modified files
 
 ---
 
@@ -259,7 +285,7 @@ DynamoDbPretenderClient (AWS SDK interface)
 - **TtlCleanupService**: 4 tests (lifecycle, cleanup logic, GSI cleanup)
 
 ### Integration Tests
-- **ItemOperationsTest**: 28 comprehensive end-to-end tests covering:
+- **ItemOperationsTest**: 33 comprehensive end-to-end tests covering:
   - Full CRUD lifecycle
   - Query with sort key conditions
   - Scan with pagination
@@ -270,7 +296,10 @@ DynamoDbPretenderClient (AWS SDK interface)
   - Batch operations (batchGetItem, batchWriteItem)
   - FilterExpression with query (equality, comparison operators, complex AND conditions)
   - FilterExpression with scan (attribute functions like attribute_exists)
-  - Error handling (table not found, etc.)
+  - Transaction operations (transactGetItems, transactWriteItems)
+  - Transaction with mixed operations (Put, Update, Delete)
+  - Transaction with ConditionCheck (success and failure cases)
+  - Error handling (table not found, transaction cancelled, etc.)
 
 - **GsiTest**: 9 tests covering:
   - Table creation with GSI
@@ -312,7 +341,7 @@ DynamoDbPretenderClient (AWS SDK interface)
   - **StreamCleanupServiceTest**: 8 tests for cleanup service (note: original count was 4, expanded)
   - See `STREAMS_VERIFICATION_CHECKLIST.md` for complete test details
 
-**Total Tests**: 302 (all passing - 100% success rate)
+**Total Tests**: 307 (all passing - 100% success rate)
 
 ---
 
@@ -545,6 +574,111 @@ client.putItem(PutItemRequest.builder()
     .build());
 ```
 
+### Transactions (TransactGetItems, TransactWriteItems)
+
+```java
+// TransactGetItems - Atomically retrieve multiple items
+TransactGetItemsResponse response = client.transactGetItems(
+    TransactGetItemsRequest.builder()
+        .transactItems(
+            TransactGetItem.builder()
+                .get(Get.builder()
+                    .tableName("Users")
+                    .key(Map.of("userId", AttributeValue.builder().s("user-1").build()))
+                    .build())
+                .build(),
+            TransactGetItem.builder()
+                .get(Get.builder()
+                    .tableName("Orders")
+                    .key(Map.of("orderId", AttributeValue.builder().s("order-1").build()))
+                    .build())
+                .build()
+        )
+        .build());
+
+// Access retrieved items
+Map<String, AttributeValue> user = response.responses().get(0).item();
+Map<String, AttributeValue> order = response.responses().get(1).item();
+
+// TransactWriteItems - Atomically perform multiple writes
+try {
+    client.transactWriteItems(TransactWriteItemsRequest.builder()
+        .transactItems(
+            // Transfer funds: subtract from account A
+            TransactWriteItem.builder()
+                .update(Update.builder()
+                    .tableName("Accounts")
+                    .key(Map.of("accountId", AttributeValue.builder().s("account-A").build()))
+                    .updateExpression("SET balance = balance - :amount")
+                    .conditionExpression("balance >= :amount")
+                    .expressionAttributeValues(Map.of(
+                        ":amount", AttributeValue.builder().n("100").build()
+                    ))
+                    .build())
+                .build(),
+            // Add to account B
+            TransactWriteItem.builder()
+                .update(Update.builder()
+                    .tableName("Accounts")
+                    .key(Map.of("accountId", AttributeValue.builder().s("account-B").build()))
+                    .updateExpression("SET balance = balance + :amount")
+                    .expressionAttributeValues(Map.of(
+                        ":amount", AttributeValue.builder().n("100").build()
+                    ))
+                    .build())
+                .build(),
+            // Log transaction
+            TransactWriteItem.builder()
+                .put(Put.builder()
+                    .tableName("Transactions")
+                    .item(Map.of(
+                        "txnId", AttributeValue.builder().s("txn-001").build(),
+                        "from", AttributeValue.builder().s("account-A").build(),
+                        "to", AttributeValue.builder().s("account-B").build(),
+                        "amount", AttributeValue.builder().n("100").build()
+                    ))
+                    .build())
+                .build()
+        )
+        .build());
+    System.out.println("Transfer successful");
+} catch (TransactionCanceledException e) {
+    System.out.println("Transfer failed: " + e.getMessage());
+    // All operations rolled back
+}
+
+// ConditionCheck - Verify condition without modifying item
+client.transactWriteItems(TransactWriteItemsRequest.builder()
+    .transactItems(
+        // Check that order status is PENDING
+        TransactWriteItem.builder()
+            .conditionCheck(ConditionCheck.builder()
+                .tableName("Orders")
+                .key(Map.of("orderId", AttributeValue.builder().s("order-1").build()))
+                .conditionExpression("#status = :pending")
+                .expressionAttributeNames(Map.of("#status", "status"))
+                .expressionAttributeValues(Map.of(
+                    ":pending", AttributeValue.builder().s("PENDING").build()
+                ))
+                .build())
+            .build(),
+        // Update order to PROCESSING
+        TransactWriteItem.builder()
+            .update(Update.builder()
+                .tableName("Orders")
+                .key(Map.of("orderId", AttributeValue.builder().s("order-1").build()))
+                .updateExpression("SET #status = :processing, processedAt = :now")
+                .expressionAttributeNames(Map.of("#status", "status"))
+                .expressionAttributeValues(Map.of(
+                    ":processing", AttributeValue.builder().s("PROCESSING").build(),
+                    ":now", AttributeValue.builder().s(Instant.now().toString()).build()
+                ))
+                .build())
+            .build()
+    )
+    .build());
+```
+
 ---
 
 ## Benefits
@@ -567,7 +701,6 @@ client.putItem(PutItemRequest.builder()
 ## Future Enhancements (Not Yet Implemented)
 
 The following features were deliberately deferred but could be added:
-- **Transactions**: TransactGetItems, TransactWriteItems
 - **Local Secondary Indexes (LSI)**: Additional index type beyond GSI
 - **PartiQL**: SQL-like query language
 
@@ -596,7 +729,7 @@ These can be added incrementally based on usage requirements.
 
 ## Conclusion
 
-The implementation is **production-ready** and provides a fully functional DynamoDB-compatible client backed by SQL databases. All 8 core item operations (including batch operations) are implemented with comprehensive test coverage, proper error handling, and adherence to existing pretender architectural patterns. Additionally, Global Secondary Indexes (GSI), Time-To-Live (TTL) with background cleanup, DynamoDB Streams with 24-hour retention, Expression Attribute Names, and full Conditional Writes support are implemented.
+The implementation is **production-ready** and provides a fully functional DynamoDB-compatible client backed by SQL databases. All 10 core item operations (including batch operations and transactions) are implemented with comprehensive test coverage, proper error handling, and adherence to existing pretender architectural patterns. Additionally, Global Secondary Indexes (GSI), Time-To-Live (TTL) with background cleanup, DynamoDB Streams with 24-hour retention, Expression Attribute Names, and full Conditional Writes support are implemented.
 
 Users can now:
 - Develop and test DynamoDB applications locally without AWS
@@ -609,7 +742,8 @@ Users can now:
 - Prevent race conditions with attribute_not_exists() checks
 - Capture and consume change data with DynamoDB Streams
 - Perform batch operations for improved throughput
+- Execute atomic multi-item transactions with transactGetItems and transactWriteItems
 
-**Total Implementation**: Complete DynamoDB 2.x compatibility with Batch Operations, Streams, Expression Attribute Names, and Conditional Writes
-**Lines of Code**: ~8,000+ (including comprehensive tests)
-**Test Success Rate**: 100% (302/302 tests passing)
+**Total Implementation**: Complete DynamoDB 2.x compatibility with Batch Operations, Transactions, Streams, Expression Attribute Names, and Conditional Writes
+**Lines of Code**: ~8,500+ (including comprehensive tests)
+**Test Success Rate**: 100% (307/307 tests passing)
