@@ -1,5 +1,6 @@
 package com.codeheadsystems.pretender.dao;
 
+import com.codeheadsystems.dbu.model.Database;
 import com.codeheadsystems.pretender.model.PdbItem;
 import java.util.List;
 import java.util.Optional;
@@ -19,16 +20,19 @@ public class PdbItemDao {
   private static final Logger log = LoggerFactory.getLogger(PdbItemDao.class);
 
   private final Jdbi jdbi;
+  private final Database database;
 
   /**
    * Instantiates a new Pdb item dao.
    *
-   * @param jdbi the jdbi
+   * @param jdbi     the jdbi
+   * @param database the database configuration
    */
   @Inject
-  public PdbItemDao(final Jdbi jdbi) {
-    log.info("PdbItemDao({})", jdbi);
+  public PdbItemDao(final Jdbi jdbi, final Database database) {
+    log.info("PdbItemDao({}, {})", jdbi, database);
     this.jdbi = jdbi;
+    this.database = database;
   }
 
   /**
@@ -41,10 +45,16 @@ public class PdbItemDao {
   public boolean insert(final String tableName, final PdbItem item) {
     log.trace("insert({}, {})", tableName, item);
 
+    // For PostgreSQL, we need to cast JSON string to JSONB
+    final String jsonValuePlaceholder = database.usePostgresql()
+        ? "CAST(:attributesJson AS JSONB)"
+        : ":attributesJson";
+
     final String sql = String.format(
         "INSERT INTO \"%s\" (hash_key_value, sort_key_value, attributes_json, create_date, update_date) " +
-            "VALUES (:hashKeyValue, :sortKeyValue, :attributesJson, :createDate, :updateDate)",
-        tableName
+            "VALUES (:hashKeyValue, :sortKeyValue, %s, :createDate, :updateDate)",
+        tableName,
+        jsonValuePlaceholder
     );
 
     return jdbi.withHandle(handle ->
@@ -112,16 +122,23 @@ public class PdbItemDao {
   public boolean update(final String tableName, final PdbItem item) {
     log.trace("update({}, {})", tableName, item);
 
+    // For PostgreSQL, we need to cast JSON string to JSONB
+    final String jsonValuePlaceholder = database.usePostgresql()
+        ? "CAST(:attributesJson AS JSONB)"
+        : ":attributesJson";
+
     final String sql = item.sortKeyValue().isPresent()
         ? String.format(
-            "UPDATE \"%s\" SET attributes_json = :attributesJson, update_date = :updateDate " +
+            "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
                 "WHERE hash_key_value = :hashKeyValue AND sort_key_value = :sortKeyValue",
-            tableName
+            tableName,
+            jsonValuePlaceholder
         )
         : String.format(
-            "UPDATE \"%s\" SET attributes_json = :attributesJson, update_date = :updateDate " +
+            "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
                 "WHERE hash_key_value = :hashKeyValue",
-            tableName
+            tableName,
+            jsonValuePlaceholder
         );
 
     return jdbi.withHandle(handle ->

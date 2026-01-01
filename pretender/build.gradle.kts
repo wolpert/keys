@@ -25,6 +25,8 @@ dependencies {
     implementation(libs.bundles.jdbi)
     testImplementation(libs.bundles.jdbi.testing)
     testImplementation(libs.hsqldb)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
 
     testAnnotationProcessor(libs.immutables.value)
     testImplementation(libs.bundles.testing)
