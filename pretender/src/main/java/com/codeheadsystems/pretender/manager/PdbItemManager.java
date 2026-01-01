@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import org.jdbi.v3.core.Handle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.*;
@@ -42,6 +43,7 @@ public class PdbItemManager {
   private final GsiProjectionHelper gsiProjectionHelper;
   private final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   private final Clock clock;
+  private final org.jdbi.v3.core.Jdbi jdbi;
 
   /**
    * Instantiates a new Pdb item manager.
@@ -57,6 +59,7 @@ public class PdbItemManager {
    * @param gsiProjectionHelper          the GSI projection helper
    * @param streamCaptureHelper          the stream capture helper
    * @param clock                        the clock
+   * @param jdbi                         the jdbi instance
    */
   @Inject
   public PdbItemManager(final PdbTableManager tableManager,
@@ -69,11 +72,12 @@ public class PdbItemManager {
                         final UpdateExpressionParser updateExpressionParser,
                         final GsiProjectionHelper gsiProjectionHelper,
                         final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper,
-                        final Clock clock) {
-    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+                        final Clock clock,
+                        final org.jdbi.v3.core.Jdbi jdbi) {
+    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         tableManager, itemTableManager, itemDao, itemConverter, attributeValueConverter,
         conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper,
-        streamCaptureHelper, clock);
+        streamCaptureHelper, clock, jdbi);
     this.tableManager = tableManager;
     this.itemTableManager = itemTableManager;
     this.itemDao = itemDao;
@@ -85,6 +89,7 @@ public class PdbItemManager {
     this.gsiProjectionHelper = gsiProjectionHelper;
     this.streamCaptureHelper = streamCaptureHelper;
     this.clock = clock;
+    this.jdbi = jdbi;
   }
 
   /**
@@ -393,13 +398,30 @@ public class PdbItemManager {
     // Determine limit (default to 100 if not specified)
     final int limit = request.limit() != null ? request.limit() : 100;
 
+    // Extract ExclusiveStartKey for pagination
+    final Optional<String> exclusiveStartHashKey;
+    final Optional<String> exclusiveStartSortKey;
+    if (request.hasExclusiveStartKey() && request.exclusiveStartKey() != null) {
+      exclusiveStartHashKey = Optional.ofNullable(request.exclusiveStartKey().get(hashKeyName))
+          .map(av -> attributeValueConverter.extractKeyValue(request.exclusiveStartKey(), hashKeyName));
+      exclusiveStartSortKey = sortKeyName.isPresent()
+          ? Optional.ofNullable(request.exclusiveStartKey().get(sortKeyName.get()))
+              .map(av -> attributeValueConverter.extractKeyValue(request.exclusiveStartKey(), sortKeyName.get()))
+          : Optional.empty();
+    } else {
+      exclusiveStartHashKey = Optional.empty();
+      exclusiveStartSortKey = Optional.empty();
+    }
+
     // Query with limit + 1 to detect if there are more results
     final List<PdbItem> items = itemDao.query(
         queryTableName,
         condition.hashKeyValue(),
         condition.sortKeyCondition(),
         condition.sortKeyValue(),
-        limit + 1);
+        limit + 1,
+        exclusiveStartHashKey,
+        exclusiveStartSortKey);
 
     // Check if we have more results
     final boolean hasMore = items.size() > limit;
@@ -759,43 +781,69 @@ public class PdbItemManager {
 
   /**
    * Batch write (put or delete) items to one or more tables.
+   * Tracks failed items and returns them as unprocessed items.
    *
    * @param request the batch write item request
-   * @return the batch write item response
+   * @return the batch write item response with unprocessed items if any failed
    */
   public BatchWriteItemResponse batchWriteItem(final BatchWriteItemRequest request) {
     log.trace("batchWriteItem({})", request);
+
+    // Track unprocessed items (items that failed to write)
+    final Map<String, List<WriteRequest>> unprocessedItems = new HashMap<>();
 
     // Process each table in the request
     for (Map.Entry<String, List<WriteRequest>> entry : request.requestItems().entrySet()) {
       final String tableName = entry.getKey();
       final List<WriteRequest> writeRequests = entry.getValue();
 
-      // Verify table exists
-      final PdbMetadata metadata = getTableMetadata(tableName);
+      // Verify table exists first - if table doesn't exist, all items for this table are unprocessed
+      try {
+        getTableMetadata(tableName);
+      } catch (ResourceNotFoundException e) {
+        // Table doesn't exist - all items for this table are unprocessed
+        log.warn("Table {} not found, marking all {} items as unprocessed", tableName, writeRequests.size());
+        unprocessedItems.put(tableName, new ArrayList<>(writeRequests));
+        continue;  // Skip to next table
+      }
 
       // Process each write request
       for (WriteRequest writeRequest : writeRequests) {
-        if (writeRequest.putRequest() != null) {
-          // Handle PutRequest
-          final PutRequest putRequest = writeRequest.putRequest();
-          putItem(PutItemRequest.builder()
-              .tableName(tableName)
-              .item(putRequest.item())
-              .build());
-        } else if (writeRequest.deleteRequest() != null) {
-          // Handle DeleteRequest
-          final DeleteRequest deleteRequest = writeRequest.deleteRequest();
-          deleteItem(DeleteItemRequest.builder()
-              .tableName(tableName)
-              .key(deleteRequest.key())
-              .build());
+        try {
+          if (writeRequest.putRequest() != null) {
+            // Handle PutRequest
+            final PutRequest putRequest = writeRequest.putRequest();
+            putItem(PutItemRequest.builder()
+                .tableName(tableName)
+                .item(putRequest.item())
+                .build());
+          } else if (writeRequest.deleteRequest() != null) {
+            // Handle DeleteRequest
+            final DeleteRequest deleteRequest = writeRequest.deleteRequest();
+            deleteItem(DeleteItemRequest.builder()
+                .tableName(tableName)
+                .key(deleteRequest.key())
+                .build());
+          }
+        } catch (Exception e) {
+          // Write failed - add to unprocessed items
+          log.warn("Failed to write item to table {}: {}", tableName, e.getMessage());
+          unprocessedItems.computeIfAbsent(tableName, k -> new ArrayList<>()).add(writeRequest);
         }
       }
     }
 
-    // Return empty response (no unprocessed items in this simple implementation)
-    return BatchWriteItemResponse.builder().build();
+    // Return response with unprocessed items if any
+    if (unprocessedItems.isEmpty()) {
+      return BatchWriteItemResponse.builder().build();
+    } else {
+      log.info("BatchWriteItem completed with {} unprocessed item(s) across {} table(s)",
+          unprocessedItems.values().stream().mapToInt(List::size).sum(),
+          unprocessedItems.size());
+      return BatchWriteItemResponse.builder()
+          .unprocessedItems(unprocessedItems)
+          .build();
+    }
   }
 
   /**
@@ -805,9 +853,17 @@ public class PdbItemManager {
    * @param request the transact get items request
    * @return the transact get items response with all retrieved items
    * @throws TransactionCanceledException if any get operation fails or table doesn't exist
+   * @throws IllegalArgumentException if the request contains more than 25 items
    */
   public TransactGetItemsResponse transactGetItems(final TransactGetItemsRequest request) {
     log.trace("transactGetItems({})", request);
+
+    // Validate transaction item count (DynamoDB limit: 25 items max)
+    if (request.transactItems() != null && request.transactItems().size() > 25) {
+      throw new IllegalArgumentException(
+          "Transaction request cannot contain more than 25 items (received " +
+              request.transactItems().size() + " items)");
+    }
 
     final List<ItemResponse> responses = new ArrayList<>();
 
@@ -875,50 +931,61 @@ public class PdbItemManager {
    * @param request the transact write items request
    * @return the transact write items response (empty on success)
    * @throws TransactionCanceledException if any write operation fails or condition check fails
+   * @throws IllegalArgumentException if the request contains more than 25 items
    */
   public TransactWriteItemsResponse transactWriteItems(final TransactWriteItemsRequest request) {
     log.trace("transactWriteItems({})", request);
 
+    // Validate transaction item count (DynamoDB limit: 25 items max)
+    if (request.transactItems() != null && request.transactItems().size() > 25) {
+      throw new IllegalArgumentException(
+          "Transaction request cannot contain more than 25 items (received " +
+              request.transactItems().size() + " items)");
+    }
+
     final List<CancellationReason> cancellationReasons = new ArrayList<>();
 
     try {
-      // Process each write operation
-      int index = 0;
-      for (TransactWriteItem transactWriteItem : request.transactItems()) {
-        try {
-          processTransactWriteItem(transactWriteItem);
-        } catch (ConditionalCheckFailedException e) {
-          // Condition check failed - build cancellation reason
-          final CancellationReason reason = CancellationReason.builder()
-              .code("ConditionalCheckFailed")
-              .message(e.getMessage())
-              .build();
-          cancellationReasons.add(reason);
+      // Wrap ALL operations in a single database transaction for true atomicity
+      return jdbi.inTransaction(handle -> {
+        // Process each write operation within the transaction
+        int index = 0;
+        for (TransactWriteItem transactWriteItem : request.transactItems()) {
+          try {
+            processTransactWriteItem(transactWriteItem, handle);
+          } catch (ConditionalCheckFailedException e) {
+            // Condition check failed - build cancellation reason
+            final CancellationReason reason = CancellationReason.builder()
+                .code("ConditionalCheckFailed")
+                .message(e.getMessage())
+                .build();
+            cancellationReasons.add(reason);
 
-          // Transaction failed - throw exception
-          throw TransactionCanceledException.builder()
-              .message("Transaction cancelled due to conditional check failure")
-              .cancellationReasons(cancellationReasons)
-              .build();
+            // Transaction failed - throw exception (will trigger rollback)
+            throw TransactionCanceledException.builder()
+                .message("Transaction cancelled due to conditional check failure")
+                .cancellationReasons(cancellationReasons)
+                .build();
 
-        } catch (ResourceNotFoundException e) {
-          // Table not found - build cancellation reason
-          final CancellationReason reason = CancellationReason.builder()
-              .code("ResourceNotFound")
-              .message(e.getMessage())
-              .build();
-          cancellationReasons.add(reason);
+          } catch (ResourceNotFoundException e) {
+            // Table not found - build cancellation reason
+            final CancellationReason reason = CancellationReason.builder()
+                .code("ResourceNotFound")
+                .message(e.getMessage())
+                .build();
+            cancellationReasons.add(reason);
 
-          throw TransactionCanceledException.builder()
-              .message("Transaction cancelled due to resource not found")
-              .cancellationReasons(cancellationReasons)
-              .build();
+            throw TransactionCanceledException.builder()
+                .message("Transaction cancelled due to resource not found")
+                .cancellationReasons(cancellationReasons)
+                .build();
+          }
+          index++;
         }
-        index++;
-      }
 
-      // All operations succeeded
-      return TransactWriteItemsResponse.builder().build();
+        // All operations succeeded - commit transaction
+        return TransactWriteItemsResponse.builder().build();
+      });
 
     } catch (TransactionCanceledException e) {
       // Re-throw transaction cancelled exceptions
@@ -938,89 +1005,229 @@ public class PdbItemManager {
   }
 
   /**
-   * Processes a single transactional write item operation.
+   * Processes a single transactional write item operation within a transaction.
+   * NOTE: This method skips Stream and GSI updates for simplicity, as DynamoDB
+   * streams are asynchronous and GSI updates are eventually consistent.
    *
    * @param transactWriteItem the transact write item
+   * @param handle            the database handle for transactional operations
    * @throws ConditionalCheckFailedException if a condition check fails
    * @throws ResourceNotFoundException       if the table doesn't exist
    */
-  private void processTransactWriteItem(final TransactWriteItem transactWriteItem) {
+  private void processTransactWriteItem(final TransactWriteItem transactWriteItem, final Handle handle) {
     if (transactWriteItem.put() != null) {
       // Handle Put operation
       final Put put = transactWriteItem.put();
-      putItem(PutItemRequest.builder()
-          .tableName(put.tableName())
-          .item(put.item())
-          .conditionExpression(put.conditionExpression())
-          .expressionAttributeNames(put.expressionAttributeNames())
-          .expressionAttributeValues(put.expressionAttributeValues())
-          .build());
+      processPutInTransaction(handle, put.tableName(), put.item(),
+          put.conditionExpression(), put.expressionAttributeNames(), put.expressionAttributeValues());
 
     } else if (transactWriteItem.update() != null) {
       // Handle Update operation
       final Update update = transactWriteItem.update();
-      updateItem(UpdateItemRequest.builder()
-          .tableName(update.tableName())
-          .key(update.key())
-          .updateExpression(update.updateExpression())
-          .conditionExpression(update.conditionExpression())
-          .expressionAttributeNames(update.expressionAttributeNames())
-          .expressionAttributeValues(update.expressionAttributeValues())
-          .build());
+      processUpdateInTransaction(handle, update.tableName(), update.key(),
+          update.updateExpression(), update.conditionExpression(),
+          update.expressionAttributeNames(), update.expressionAttributeValues());
 
     } else if (transactWriteItem.delete() != null) {
       // Handle Delete operation
       final Delete delete = transactWriteItem.delete();
-      deleteItem(DeleteItemRequest.builder()
-          .tableName(delete.tableName())
-          .key(delete.key())
-          .conditionExpression(delete.conditionExpression())
-          .expressionAttributeNames(delete.expressionAttributeNames())
-          .expressionAttributeValues(delete.expressionAttributeValues())
-          .build());
+      processDeleteInTransaction(handle, delete.tableName(), delete.key(),
+          delete.conditionExpression(), delete.expressionAttributeNames(), delete.expressionAttributeValues());
 
     } else if (transactWriteItem.conditionCheck() != null) {
       // Handle ConditionCheck operation
       final ConditionCheck conditionCheck = transactWriteItem.conditionCheck();
-      final String tableName = conditionCheck.tableName();
+      processConditionCheckInTransaction(handle, conditionCheck.tableName(), conditionCheck.key(),
+          conditionCheck.conditionExpression(), conditionCheck.expressionAttributeNames(),
+          conditionCheck.expressionAttributeValues());
+    }
+  }
 
-      // Verify table exists
-      final PdbMetadata metadata = getTableMetadata(tableName);
+  /**
+   * Process a Put operation within a transaction.
+   */
+  private void processPutInTransaction(final Handle handle, final String tableName,
+                                       final Map<String, AttributeValue> item,
+                                       final String conditionExpression,
+                                       final Map<String, String> expressionAttributeNames,
+                                       final Map<String, AttributeValue> expressionAttributeValues) {
+    final PdbMetadata metadata = getTableMetadata(tableName);
 
-      // Get the item to check condition against
-      final String itemTableName = itemTableManager.getItemTableName(tableName);
-      final String hashKeyValue = attributeValueConverter.extractKeyValue(
-          conditionCheck.key(), metadata.hashKey());
-      final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
-          attributeValueConverter.extractKeyValue(conditionCheck.key(), sk));
+    // Extract key values
+    final String hashKeyValue = attributeValueConverter.extractKeyValue(item, metadata.hashKey());
+    final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+        attributeValueConverter.extractKeyValue(item, sk));
 
-      final Optional<PdbItem> existingItem = itemDao.get(itemTableName, hashKeyValue, sortKeyValue);
+    // Check if item exists (for condition evaluation)
+    final String itemTableName = itemTableManager.getItemTableName(tableName);
+    final Optional<PdbItem> existingPdbItem = itemDao.get(handle, itemTableName, hashKeyValue, sortKeyValue);
 
-      // If condition expression is present, evaluate it
-      if (conditionCheck.conditionExpression() != null && !conditionCheck.conditionExpression().isBlank()) {
-        final Map<String, AttributeValue> currentItem = existingItem.isPresent()
-            ? attributeValueConverter.fromJson(existingItem.get().attributesJson())
-            : new HashMap<>();
+    // Check condition expression if provided
+    if (conditionExpression != null && !conditionExpression.isBlank()) {
+      final Map<String, AttributeValue> existingItem = existingPdbItem
+          .map(i -> attributeValueConverter.fromJson(i.attributesJson()))
+          .orElse(null);
 
-        final Map<String, String> expressionAttributeNames = conditionCheck.expressionAttributeNames() != null
-            ? conditionCheck.expressionAttributeNames()
-            : Collections.emptyMap();
-        final Map<String, AttributeValue> expressionAttributeValues = conditionCheck.expressionAttributeValues() != null
-            ? conditionCheck.expressionAttributeValues()
-            : Collections.emptyMap();
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          existingItem, conditionExpression,
+          expressionAttributeValues != null ? expressionAttributeValues : Collections.emptyMap(),
+          expressionAttributeNames != null ? expressionAttributeNames : Collections.emptyMap()
+      );
 
-        final boolean conditionMet = conditionExpressionParser.evaluate(
-            currentItem,
-            conditionCheck.conditionExpression(),
-            expressionAttributeValues,
-            expressionAttributeNames
-        );
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("The conditional request failed")
+            .build();
+      }
+    }
 
-        if (!conditionMet) {
-          throw ConditionalCheckFailedException.builder()
-              .message("Condition check failed")
-              .build();
-        }
+    // Convert to PdbItem
+    final PdbItem pdbItem = itemConverter.toPdbItem(tableName, item, metadata);
+
+    // Insert or update (putItem is an upsert operation)
+    if (existingPdbItem.isPresent()) {
+      itemDao.update(handle, itemTableName, pdbItem);
+    } else {
+      itemDao.insert(handle, itemTableName, pdbItem);
+    }
+  }
+
+  /**
+   * Process an Update operation within a transaction.
+   */
+  private void processUpdateInTransaction(final Handle handle, final String tableName,
+                                          final Map<String, AttributeValue> key,
+                                          final String updateExpression,
+                                          final String conditionExpression,
+                                          final Map<String, String> expressionAttributeNames,
+                                          final Map<String, AttributeValue> expressionAttributeValues) {
+    final PdbMetadata metadata = getTableMetadata(tableName);
+
+    // Extract key values
+    final String hashKeyValue = attributeValueConverter.extractKeyValue(key, metadata.hashKey());
+    final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+        attributeValueConverter.extractKeyValue(key, sk));
+
+    // Get existing item
+    final String itemTableName = itemTableManager.getItemTableName(tableName);
+    final Optional<PdbItem> existingPdbItem = itemDao.get(handle, itemTableName, hashKeyValue, sortKeyValue);
+
+    // Get current attributes (or empty map if item doesn't exist - updateItem creates if not exists)
+    Map<String, AttributeValue> currentAttributes = existingPdbItem
+        .map(item -> attributeValueConverter.fromJson(item.attributesJson()))
+        .orElse(new HashMap<>(key));  // Start with key if item doesn't exist
+
+    // Check condition expression if provided
+    if (conditionExpression != null && !conditionExpression.isBlank()) {
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          existingPdbItem.isPresent() ? currentAttributes : null,
+          conditionExpression,
+          expressionAttributeValues != null ? expressionAttributeValues : Collections.emptyMap(),
+          expressionAttributeNames != null ? expressionAttributeNames : Collections.emptyMap()
+      );
+
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("The conditional request failed")
+            .build();
+      }
+    }
+
+    // Apply update expression
+    final Map<String, AttributeValue> updatedAttributes = updateExpressionParser.applyUpdate(
+        currentAttributes, updateExpression,
+        expressionAttributeValues != null ? expressionAttributeValues : Collections.emptyMap(),
+        expressionAttributeNames != null ? expressionAttributeNames : Collections.emptyMap()
+    );
+
+    // Convert to PdbItem
+    final PdbItem pdbItem = itemConverter.toPdbItem(tableName, updatedAttributes, metadata);
+
+    // Insert or update
+    if (existingPdbItem.isPresent()) {
+      itemDao.update(handle, itemTableName, pdbItem);
+    } else {
+      itemDao.insert(handle, itemTableName, pdbItem);
+    }
+  }
+
+  /**
+   * Process a Delete operation within a transaction.
+   */
+  private void processDeleteInTransaction(final Handle handle, final String tableName,
+                                          final Map<String, AttributeValue> key,
+                                          final String conditionExpression,
+                                          final Map<String, String> expressionAttributeNames,
+                                          final Map<String, AttributeValue> expressionAttributeValues) {
+    final PdbMetadata metadata = getTableMetadata(tableName);
+
+    // Extract key values
+    final String hashKeyValue = attributeValueConverter.extractKeyValue(key, metadata.hashKey());
+    final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+        attributeValueConverter.extractKeyValue(key, sk));
+
+    // Get existing item for condition check
+    final String itemTableName = itemTableManager.getItemTableName(tableName);
+    final Optional<PdbItem> existingPdbItem = itemDao.get(handle, itemTableName, hashKeyValue, sortKeyValue);
+
+    // Check condition expression if provided
+    if (conditionExpression != null && !conditionExpression.isBlank()) {
+      final Map<String, AttributeValue> existingItem = existingPdbItem
+          .map(item -> attributeValueConverter.fromJson(item.attributesJson()))
+          .orElse(null);
+
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          existingItem, conditionExpression,
+          expressionAttributeValues != null ? expressionAttributeValues : Collections.emptyMap(),
+          expressionAttributeNames != null ? expressionAttributeNames : Collections.emptyMap()
+      );
+
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("The conditional request failed")
+            .build();
+      }
+    }
+
+    // Delete the item
+    itemDao.delete(handle, itemTableName, hashKeyValue, sortKeyValue);
+  }
+
+  /**
+   * Process a ConditionCheck operation within a transaction.
+   */
+  private void processConditionCheckInTransaction(final Handle handle, final String tableName,
+                                                   final Map<String, AttributeValue> key,
+                                                   final String conditionExpression,
+                                                   final Map<String, String> expressionAttributeNames,
+                                                   final Map<String, AttributeValue> expressionAttributeValues) {
+    final PdbMetadata metadata = getTableMetadata(tableName);
+
+    // Extract key values
+    final String hashKeyValue = attributeValueConverter.extractKeyValue(key, metadata.hashKey());
+    final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+        attributeValueConverter.extractKeyValue(key, sk));
+
+    // Get the item to check condition against
+    final String itemTableName = itemTableManager.getItemTableName(tableName);
+    final Optional<PdbItem> existingItem = itemDao.get(handle, itemTableName, hashKeyValue, sortKeyValue);
+
+    // If condition expression is present, evaluate it
+    if (conditionExpression != null && !conditionExpression.isBlank()) {
+      final Map<String, AttributeValue> currentItem = existingItem.isPresent()
+          ? attributeValueConverter.fromJson(existingItem.get().attributesJson())
+          : new HashMap<>();
+
+      final boolean conditionMet = conditionExpressionParser.evaluate(
+          currentItem, conditionExpression,
+          expressionAttributeValues != null ? expressionAttributeValues : Collections.emptyMap(),
+          expressionAttributeNames != null ? expressionAttributeNames : Collections.emptyMap()
+      );
+
+      if (!conditionMet) {
+        throw ConditionalCheckFailedException.builder()
+            .message("Condition check failed")
+            .build();
       }
     }
   }

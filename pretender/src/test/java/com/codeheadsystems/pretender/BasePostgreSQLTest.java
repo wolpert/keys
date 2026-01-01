@@ -46,7 +46,8 @@ public abstract class BasePostgreSQLTest {
       new PostgreSQLContainer<>("postgres:17-alpine")
           .withDatabaseName("pretender_test")
           .withUsername("test")
-          .withPassword("test");
+          .withPassword("test")
+          .withReuse(true);
 
   protected Jdbi jdbi;
   protected Configuration configuration;

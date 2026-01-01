@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codeheadsystems.pretender.DynamoDbPretenderClient;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -1424,5 +1425,670 @@ public class ItemOperationsTest extends BaseEndToEndTest {
             )
             .build())
     ).isInstanceOf(software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException.class);
+  }
+
+  @Test
+  void transactWriteItems_atomicRollback_onConditionFailure() {
+    // Test that transaction atomicity works: if operation #2 fails, operation #1 should be rolled back
+    final String hashKey = "rollback-test";
+
+    // Create initial item
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("existing-item").build(),
+            "value", AttributeValue.builder().s("initial").build()
+        ))
+        .build());
+
+    // Attempt transaction:
+    // 1. Put a new item (should succeed)
+    // 2. Update existing item with wrong condition (should fail)
+    // Result: NEITHER operation should be persisted due to rollback
+    assertThatThrownBy(() ->
+        client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+            .transactItems(
+                // Operation 1: Put new item
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                        .tableName(TABLE_NAME)
+                        .item(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("new-item").build(),
+                            "value", AttributeValue.builder().s("should-not-exist").build()
+                        ))
+                        .build())
+                    .build(),
+                // Operation 2: Update existing item with failing condition
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .update(software.amazon.awssdk.services.dynamodb.model.Update.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("existing-item").build()
+                        ))
+                        .updateExpression("SET #v = :newval")
+                        .conditionExpression("#v = :wrongval")  // This will fail
+                        .expressionAttributeNames(Map.of("#v", "value"))
+                        .expressionAttributeValues(Map.of(
+                            ":newval", AttributeValue.builder().s("updated").build(),
+                            ":wrongval", AttributeValue.builder().s("wrong").build()
+                        ))
+                        .build())
+                    .build()
+            )
+            .build())
+    ).isInstanceOf(software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException.class);
+
+    // Verify operation #1 was rolled back - the new item should NOT exist
+    final GetItemResponse getNewItemResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("new-item").build()
+        ))
+        .build());
+    assertThat(getNewItemResponse.hasItem()).isFalse();  // Item should not exist due to rollback
+
+    // Verify existing item was not modified
+    final GetItemResponse getExistingResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("existing-item").build()
+        ))
+        .build());
+    assertThat(getExistingResponse.hasItem()).isTrue();
+    assertThat(getExistingResponse.item().get("value").s()).isEqualTo("initial");  // Should still be "initial"
+  }
+
+  @Test
+  void transactWriteItems_multipleOperations_allOrNothing() {
+    // Test atomic transaction with 3 operations: if #3 fails, #1 and #2 should be rolled back
+    final String hashKey = "multi-op-test";
+
+    // Attempt transaction with 3 operations, where the 3rd will fail
+    assertThatThrownBy(() ->
+        client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+            .transactItems(
+                // Operation 1: Put item A
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                        .tableName(TABLE_NAME)
+                        .item(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("item-a").build(),
+                            "value", AttributeValue.builder().s("A").build()
+                        ))
+                        .build())
+                    .build(),
+                // Operation 2: Put item B
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                        .tableName(TABLE_NAME)
+                        .item(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("item-b").build(),
+                            "value", AttributeValue.builder().s("B").build()
+                        ))
+                        .build())
+                    .build(),
+                // Operation 3: Put item with failing condition (item should not exist)
+                software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+                    .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+                        .tableName(TABLE_NAME)
+                        .item(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                            SORT_KEY, AttributeValue.builder().s("item-c").build(),
+                            "value", AttributeValue.builder().s("C").build()
+                        ))
+                        .conditionExpression("attribute_exists(#pk)")  // Will fail since item doesn't exist
+                        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+                        .build())
+                    .build()
+            )
+            .build())
+    ).isInstanceOf(software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException.class);
+
+    // Verify ALL operations were rolled back - none of the items should exist
+    final GetItemResponse getItemA = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-a").build()
+        ))
+        .build());
+    assertThat(getItemA.hasItem()).isFalse();
+
+    final GetItemResponse getItemB = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-b").build()
+        ))
+        .build());
+    assertThat(getItemB.hasItem()).isFalse();
+
+    final GetItemResponse getItemC = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-c").build()
+        ))
+        .build());
+    assertThat(getItemC.hasItem()).isFalse();
+  }
+
+  @Test
+  void batchWriteItem_partialFailure_returnsUnprocessedItems() {
+    // Test that batch write properly tracks failed items and returns them as unprocessed
+    final String hashKey = "batch-test";
+
+    // Create an existing item with a specific value
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("existing").build(),
+            "value", AttributeValue.builder().s("original").build()
+        ))
+        .build());
+
+    // Attempt batch write with multiple items - some may fail (we'll force a failure using a non-existent table)
+    // Create a write request that includes both valid and invalid operations
+    final List<software.amazon.awssdk.services.dynamodb.model.WriteRequest> validRequests = List.of(
+        software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+            .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                .item(Map.of(
+                    HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                    SORT_KEY, AttributeValue.builder().s("item-1").build(),
+                    "value", AttributeValue.builder().s("value-1").build()
+                ))
+                .build())
+            .build(),
+        software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+            .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                .item(Map.of(
+                    HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                    SORT_KEY, AttributeValue.builder().s("item-2").build(),
+                    "value", AttributeValue.builder().s("value-2").build()
+                ))
+                .build())
+            .build()
+    );
+
+    final List<software.amazon.awssdk.services.dynamodb.model.WriteRequest> invalidTableRequests = List.of(
+        software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+            .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                .item(Map.of(
+                    HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                    SORT_KEY, AttributeValue.builder().s("item-3").build(),
+                    "value", AttributeValue.builder().s("value-3").build()
+                ))
+                .build())
+            .build()
+    );
+
+    // Execute batch write with one non-existent table
+    final software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse response =
+        client.batchWriteItem(software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, validRequests,
+                "non-existent-table", invalidTableRequests
+            ))
+            .build());
+
+    // Verify that items for the non-existent table are returned as unprocessed
+    assertThat(response.hasUnprocessedItems()).isTrue();
+    assertThat(response.unprocessedItems()).containsKey("non-existent-table");
+    assertThat(response.unprocessedItems().get("non-existent-table")).hasSize(1);
+
+    // Verify that items for the valid table were successfully written
+    final GetItemResponse item1 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build()
+        ))
+        .build());
+    assertThat(item1.hasItem()).isTrue();
+    assertThat(item1.item().get("value").s()).isEqualTo("value-1");
+
+    final GetItemResponse item2 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-2").build()
+        ))
+        .build());
+    assertThat(item2.hasItem()).isTrue();
+    assertThat(item2.item().get("value").s()).isEqualTo("value-2");
+  }
+
+  @Test
+  void batchWriteItem_allSuccess_noUnprocessedItems() {
+    // Test that when all writes succeed, no unprocessed items are returned
+    final String hashKey = "batch-success-test";
+
+    final software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse response =
+        client.batchWriteItem(software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest.builder()
+            .requestItems(Map.of(
+                TABLE_NAME, List.of(
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                                SORT_KEY, AttributeValue.builder().s("item-1").build(),
+                                "value", AttributeValue.builder().s("value-1").build()
+                            ))
+                            .build())
+                        .build(),
+                    software.amazon.awssdk.services.dynamodb.model.WriteRequest.builder()
+                        .putRequest(software.amazon.awssdk.services.dynamodb.model.PutRequest.builder()
+                            .item(Map.of(
+                                HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                                SORT_KEY, AttributeValue.builder().s("item-2").build(),
+                                "value", AttributeValue.builder().s("value-2").build()
+                            ))
+                            .build())
+                        .build()
+                )
+            ))
+            .build());
+
+    // Verify no unprocessed items
+    assertThat(response.hasUnprocessedItems()).isFalse();
+
+    // Verify all items were written
+    final GetItemResponse item1 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-1").build()
+        ))
+        .build());
+    assertThat(item1.hasItem()).isTrue();
+
+    final GetItemResponse item2 = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+            SORT_KEY, AttributeValue.builder().s("item-2").build()
+        ))
+        .build());
+    assertThat(item2.hasItem()).isTrue();
+  }
+
+  @Test
+  void query_withPagination_multiplePages() {
+    // Test that query pagination works correctly with ExclusiveStartKey
+    final String hashKey = "pagination-test";
+
+    // Create 10 items with the same hash key but different sort keys
+    for (int i = 1; i <= 10; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build(),
+              "value", AttributeValue.builder().n(String.valueOf(i)).build()
+          ))
+          .build());
+    }
+
+    // First query - get 3 items
+    QueryResponse page1 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .limit(3)
+        .build());
+
+    assertThat(page1.count()).isEqualTo(3);
+    assertThat(page1.hasLastEvaluatedKey()).isTrue();
+    assertThat(page1.items().get(0).get(SORT_KEY).s()).isEqualTo("item-01");
+    assertThat(page1.items().get(2).get(SORT_KEY).s()).isEqualTo("item-03");
+
+    // Second query - use LastEvaluatedKey to get next 3 items
+    QueryResponse page2 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .exclusiveStartKey(page1.lastEvaluatedKey())
+        .limit(3)
+        .build());
+
+    assertThat(page2.count()).isEqualTo(3);
+    assertThat(page2.hasLastEvaluatedKey()).isTrue();
+    assertThat(page2.items().get(0).get(SORT_KEY).s()).isEqualTo("item-04");
+    assertThat(page2.items().get(2).get(SORT_KEY).s()).isEqualTo("item-06");
+
+    // Third query - get next 3 items
+    QueryResponse page3 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .exclusiveStartKey(page2.lastEvaluatedKey())
+        .limit(3)
+        .build());
+
+    assertThat(page3.count()).isEqualTo(3);
+    assertThat(page3.hasLastEvaluatedKey()).isTrue();
+    assertThat(page3.items().get(0).get(SORT_KEY).s()).isEqualTo("item-07");
+    assertThat(page3.items().get(2).get(SORT_KEY).s()).isEqualTo("item-09");
+
+    // Fourth query - get final item (only 1 left)
+    QueryResponse page4 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .exclusiveStartKey(page3.lastEvaluatedKey())
+        .limit(3)
+        .build());
+
+    assertThat(page4.count()).isEqualTo(1);
+    assertThat(page4.hasLastEvaluatedKey()).isFalse();  // No more items
+    assertThat(page4.items().get(0).get(SORT_KEY).s()).isEqualTo("item-10");
+
+    // Verify we got all 10 unique items
+    final int totalItems = page1.count() + page2.count() + page3.count() + page4.count();
+    assertThat(totalItems).isEqualTo(10);
+  }
+
+  @Test
+  void query_withPagination_exactPageBoundary() {
+    // Test pagination when the total items is exactly a multiple of the page size
+    final String hashKey = "exact-boundary-test";
+
+    // Create exactly 9 items (3 pages of 3 items each)
+    for (int i = 1; i <= 9; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build(),
+              "value", AttributeValue.builder().n(String.valueOf(i)).build()
+          ))
+          .build());
+    }
+
+    // Page 1
+    QueryResponse page1 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .limit(3)
+        .build());
+
+    assertThat(page1.count()).isEqualTo(3);
+    assertThat(page1.hasLastEvaluatedKey()).isTrue();
+
+    // Page 2
+    QueryResponse page2 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .exclusiveStartKey(page1.lastEvaluatedKey())
+        .limit(3)
+        .build());
+
+    assertThat(page2.count()).isEqualTo(3);
+    assertThat(page2.hasLastEvaluatedKey()).isTrue();
+
+    // Page 3 - last page
+    QueryResponse page3 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build()
+        ))
+        .exclusiveStartKey(page2.lastEvaluatedKey())
+        .limit(3)
+        .build());
+
+    assertThat(page3.count()).isEqualTo(3);
+    assertThat(page3.hasLastEvaluatedKey()).isFalse();  // No more items - exactly at boundary
+
+    // Verify total
+    assertThat(page1.count() + page2.count() + page3.count()).isEqualTo(9);
+  }
+
+  @Test
+  void query_withPagination_andSortKeyCondition() {
+    // Test pagination with a sort key condition (e.g., begins_with)
+    final String hashKey = "pagination-sort-condition-test";
+
+    // Create items with different prefixes
+    for (int i = 1; i <= 10; i++) {
+      String prefix = (i <= 5) ? "A" : "B";
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s(prefix + String.format("-%02d", i)).build(),
+              "value", AttributeValue.builder().n(String.valueOf(i)).build()
+          ))
+          .build());
+    }
+
+    // Query only items starting with "A" with pagination
+    QueryResponse page1 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk AND begins_with(#sk, :prefix)")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY, "#sk", SORT_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":prefix", AttributeValue.builder().s("A").build()
+        ))
+        .limit(2)
+        .build());
+
+    assertThat(page1.count()).isEqualTo(2);
+    assertThat(page1.hasLastEvaluatedKey()).isTrue();
+    assertThat(page1.items().get(0).get(SORT_KEY).s()).startsWith("A");
+
+    // Get next page
+    QueryResponse page2 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk AND begins_with(#sk, :prefix)")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY, "#sk", SORT_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":prefix", AttributeValue.builder().s("A").build()
+        ))
+        .exclusiveStartKey(page1.lastEvaluatedKey())
+        .limit(2)
+        .build());
+
+    assertThat(page2.count()).isEqualTo(2);
+    assertThat(page2.hasLastEvaluatedKey()).isTrue();
+    assertThat(page2.items().get(0).get(SORT_KEY).s()).startsWith("A");
+
+    // Get final page
+    QueryResponse page3 = client.query(QueryRequest.builder()
+        .tableName(TABLE_NAME)
+        .keyConditionExpression("#pk = :pk AND begins_with(#sk, :prefix)")
+        .expressionAttributeNames(Map.of("#pk", HASH_KEY, "#sk", SORT_KEY))
+        .expressionAttributeValues(Map.of(
+            ":pk", AttributeValue.builder().s(hashKey).build(),
+            ":prefix", AttributeValue.builder().s("A").build()
+        ))
+        .exclusiveStartKey(page2.lastEvaluatedKey())
+        .limit(2)
+        .build());
+
+    assertThat(page3.count()).isEqualTo(1);  // Only 1 item left (5 total items with prefix "A")
+    assertThat(page3.hasLastEvaluatedKey()).isFalse();
+    assertThat(page3.items().get(0).get(SORT_KEY).s()).startsWith("A");
+
+    // Verify total
+    assertThat(page1.count() + page2.count() + page3.count()).isEqualTo(5);
+  }
+
+  @Test
+  void transactWriteItems_exceedsMaxItemCount_throwsException() {
+    // Test that transaction with more than 25 items throws IllegalArgumentException
+    final String hashKey = "limit-test";
+
+    // Create a list with 26 transaction items (exceeds DynamoDB limit of 25)
+    final List<software.amazon.awssdk.services.dynamodb.model.TransactWriteItem> items = new ArrayList<>();
+    for (int i = 1; i <= 26; i++) {
+      items.add(software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+          .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+              .tableName(TABLE_NAME)
+              .item(Map.of(
+                  HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                  SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build(),
+                  "value", AttributeValue.builder().n(String.valueOf(i)).build()
+              ))
+              .build())
+          .build());
+    }
+
+    // Attempt transaction with 26 items - should fail
+    assertThatThrownBy(() ->
+        client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+            .transactItems(items)
+            .build())
+    ).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Transaction request cannot contain more than 25 items")
+        .hasMessageContaining("26 items");
+  }
+
+  @Test
+  void transactWriteItems_exactlyMaxItemCount_succeeds() {
+    // Test that transaction with exactly 25 items succeeds
+    final String hashKey = "max-limit-test";
+
+    // Create a list with exactly 25 transaction items (at the limit)
+    final List<software.amazon.awssdk.services.dynamodb.model.TransactWriteItem> items = new ArrayList<>();
+    for (int i = 1; i <= 25; i++) {
+      items.add(software.amazon.awssdk.services.dynamodb.model.TransactWriteItem.builder()
+          .put(software.amazon.awssdk.services.dynamodb.model.Put.builder()
+              .tableName(TABLE_NAME)
+              .item(Map.of(
+                  HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                  SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build(),
+                  "value", AttributeValue.builder().n(String.valueOf(i)).build()
+              ))
+              .build())
+          .build());
+    }
+
+    // Execute transaction with 25 items - should succeed
+    final software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsResponse response =
+        client.transactWriteItems(software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest.builder()
+            .transactItems(items)
+            .build());
+
+    assertThat(response).isNotNull();
+
+    // Verify all 25 items were created
+    for (int i = 1; i <= 25; i++) {
+      final GetItemResponse item = client.getItem(GetItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .key(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build()
+          ))
+          .build());
+      assertThat(item.hasItem()).isTrue();
+    }
+  }
+
+  @Test
+  void transactGetItems_exceedsMaxItemCount_throwsException() {
+    // Test that transactGetItems with more than 25 items throws IllegalArgumentException
+    final String hashKey = "get-limit-test";
+
+    // Create a list with 26 transaction get items (exceeds DynamoDB limit of 25)
+    final List<software.amazon.awssdk.services.dynamodb.model.TransactGetItem> items = new ArrayList<>();
+    for (int i = 1; i <= 26; i++) {
+      items.add(software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+          .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+              .tableName(TABLE_NAME)
+              .key(Map.of(
+                  HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                  SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build()
+              ))
+              .build())
+          .build());
+    }
+
+    // Attempt transaction with 26 items - should fail
+    assertThatThrownBy(() ->
+        client.transactGetItems(software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest.builder()
+            .transactItems(items)
+            .build())
+    ).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Transaction request cannot contain more than 25 items")
+        .hasMessageContaining("26 items");
+  }
+
+  @Test
+  void transactGetItems_exactlyMaxItemCount_succeeds() {
+    // Test that transactGetItems with exactly 25 items succeeds
+    final String hashKey = "get-max-limit-test";
+
+    // First, create 25 items
+    for (int i = 1; i <= 25; i++) {
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(Map.of(
+              HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+              SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build(),
+              "value", AttributeValue.builder().n(String.valueOf(i)).build()
+          ))
+          .build());
+    }
+
+    // Create a list with exactly 25 transaction get items (at the limit)
+    final List<software.amazon.awssdk.services.dynamodb.model.TransactGetItem> items = new ArrayList<>();
+    for (int i = 1; i <= 25; i++) {
+      items.add(software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+          .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+              .tableName(TABLE_NAME)
+              .key(Map.of(
+                  HASH_KEY, AttributeValue.builder().s(hashKey).build(),
+                  SORT_KEY, AttributeValue.builder().s(String.format("item-%02d", i)).build()
+              ))
+              .build())
+          .build());
+    }
+
+    // Execute transaction with 25 items - should succeed
+    final software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse response =
+        client.transactGetItems(software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest.builder()
+            .transactItems(items)
+            .build());
+
+    assertThat(response).isNotNull();
+    assertThat(response.responses()).hasSize(25);
+
+    // Verify all items were retrieved
+    for (int i = 0; i < 25; i++) {
+      assertThat(response.responses().get(i).hasItem()).isTrue();
+      assertThat(response.responses().get(i).item().get("value").n()).isEqualTo(String.valueOf(i + 1));
+    }
   }
 }
