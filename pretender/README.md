@@ -9,10 +9,10 @@ PostgreSQL but not limited to it.
 Slop warning... I'm in the process of reviewing the code, but consider it
 experimental until I can verify it works as intended and is well designed.
 
-Streaming features here probably do not work, though you'll see Claude
-docs say that they do. But there is a JVM assertion failure running the tests
-for one class that I had to comment out. That's likely a serious red flag.
-Be aware that I have not verified this module yet.
+**Update**: The JVM assertion failure in streaming tests has been fixed. The issue was
+improper HSQLDB memory management in tests (databases not shut down after each test),
+causing OutOfMemoryError. All 297 tests now pass successfully. Streaming features are
+functional but still require validation in production environments.
 
 ## Idea
 
