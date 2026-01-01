@@ -20,44 +20,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.PutRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
-import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
-import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
-import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
-import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
-import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest;
-import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse;
-import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
-import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsResponse;
-import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
-import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
-import software.amazon.awssdk.services.dynamodb.model.Get;
-import software.amazon.awssdk.services.dynamodb.model.Put;
-import software.amazon.awssdk.services.dynamodb.model.Update;
-import software.amazon.awssdk.services.dynamodb.model.Delete;
-import software.amazon.awssdk.services.dynamodb.model.ConditionCheck;
-import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
-import software.amazon.awssdk.services.dynamodb.model.CancellationReason;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 /**
  * Manager for DynamoDB item operations.
@@ -83,17 +46,17 @@ public class PdbItemManager {
   /**
    * Instantiates a new Pdb item manager.
    *
-   * @param tableManager                   the table manager
-   * @param itemTableManager               the item table manager
-   * @param itemDao                        the item dao
-   * @param itemConverter                  the item converter
-   * @param attributeValueConverter        the attribute value converter
-   * @param conditionExpressionParser      the condition expression parser
-   * @param keyConditionExpressionParser   the key condition expression parser
-   * @param updateExpressionParser         the update expression parser
-   * @param gsiProjectionHelper            the GSI projection helper
-   * @param streamCaptureHelper            the stream capture helper
-   * @param clock                          the clock
+   * @param tableManager                 the table manager
+   * @param itemTableManager             the item table manager
+   * @param itemDao                      the item dao
+   * @param itemConverter                the item converter
+   * @param attributeValueConverter      the attribute value converter
+   * @param conditionExpressionParser    the condition expression parser
+   * @param keyConditionExpressionParser the key condition expression parser
+   * @param updateExpressionParser       the update expression parser
+   * @param gsiProjectionHelper          the GSI projection helper
+   * @param streamCaptureHelper          the stream capture helper
+   * @param clock                        the clock
    */
   @Inject
   public PdbItemManager(final PdbTableManager tableManager,
@@ -591,13 +554,13 @@ public class PdbItemManager {
   /**
    * Maintains GSI tables when an item is put or updated.
    *
-   * @param metadata     the table metadata
-   * @param itemAttrs    the item attributes
-   * @param pdbItem      the PdbItem for create/update timestamps
+   * @param metadata  the table metadata
+   * @param itemAttrs the item attributes
+   * @param pdbItem   the PdbItem for create/update timestamps
    */
   private void maintainGsiTables(final PdbMetadata metadata,
-                                  final Map<String, AttributeValue> itemAttrs,
-                                  final PdbItem pdbItem) {
+                                 final Map<String, AttributeValue> itemAttrs,
+                                 final PdbItem pdbItem) {
     if (metadata.globalSecondaryIndexes().isEmpty()) {
       return;
     }
@@ -650,11 +613,11 @@ public class PdbItemManager {
   /**
    * Deletes an item from all GSI tables.
    *
-   * @param metadata     the table metadata
-   * @param itemAttrs    the item attributes (to extract GSI keys)
+   * @param metadata  the table metadata
+   * @param itemAttrs the item attributes (to extract GSI keys)
    */
   private void deleteFromGsiTables(final PdbMetadata metadata,
-                                    final Map<String, AttributeValue> itemAttrs) {
+                                   final Map<String, AttributeValue> itemAttrs) {
     if (metadata.globalSecondaryIndexes().isEmpty()) {
       return;
     }
@@ -727,14 +690,14 @@ public class PdbItemManager {
    * Builds a composite sort key for GSI tables to ensure uniqueness.
    * Format: [<gsi_sort_key>#]<main_hash_key>[#<main_sort_key>]
    *
-   * @param gsiSortKeyValue the GSI sort key value (if present)
+   * @param gsiSortKeyValue  the GSI sort key value (if present)
    * @param mainHashKeyValue the main table hash key value
    * @param mainSortKeyValue the main table sort key value (if present)
    * @return the composite sort key
    */
   private String buildCompositeSortKey(final Optional<String> gsiSortKeyValue,
-                                        final String mainHashKeyValue,
-                                        final Optional<String> mainSortKeyValue) {
+                                       final String mainHashKeyValue,
+                                       final Optional<String> mainSortKeyValue) {
     final StringBuilder sb = new StringBuilder();
 
     // Add GSI sort key if present
@@ -979,7 +942,7 @@ public class PdbItemManager {
    *
    * @param transactWriteItem the transact write item
    * @throws ConditionalCheckFailedException if a condition check fails
-   * @throws ResourceNotFoundException if the table doesn't exist
+   * @throws ResourceNotFoundException       if the table doesn't exist
    */
   private void processTransactWriteItem(final TransactWriteItem transactWriteItem) {
     if (transactWriteItem.put() != null) {

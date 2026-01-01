@@ -3,7 +3,6 @@ package com.codeheadsystems.pretender;
 import com.codeheadsystems.pretender.converter.PdbTableConverter;
 import com.codeheadsystems.pretender.manager.PdbItemManager;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
-import com.codeheadsystems.pretender.manager.PretenderDatabaseManager;
 import com.codeheadsystems.pretender.model.PdbMetadata;
 import java.util.Optional;
 import javax.inject.Inject;
@@ -13,35 +12,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
-import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
-import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
-import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
-import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
-import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
-import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest;
-import software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse;
-import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
-import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsResponse;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 /**
  * The type Dynamo db pretender client.
@@ -52,7 +23,6 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
   private static final Logger log = LoggerFactory.getLogger(DynamoDbPretenderClient.class);
 
   private static final String SERVICE_NAME = "dynamodb";
-  private final PretenderDatabaseManager pretenderDatabaseManager;
   private final PdbTableManager pdbTableManager;
   private final PdbTableConverter pdbTableConverter;
   private final PdbItemManager pdbItemManager;
@@ -60,19 +30,16 @@ public class DynamoDbPretenderClient implements DynamoDbClient {
   /**
    * Instantiates a new Dynamo db pretender client.
    *
-   * @param pretenderDatabaseManager the pretender database manager
-   * @param pdbTableManager          the metadata manager
-   * @param pdbTableConverter        the pdb table converter
-   * @param pdbItemManager           the item manager
+   * @param pdbTableManager   the metadata manager
+   * @param pdbTableConverter the pdb table converter
+   * @param pdbItemManager    the item manager
    */
   @Inject
-  public DynamoDbPretenderClient(final PretenderDatabaseManager pretenderDatabaseManager,
-                                 final PdbTableManager pdbTableManager,
+  public DynamoDbPretenderClient(final PdbTableManager pdbTableManager,
                                  final PdbTableConverter pdbTableConverter,
                                  final PdbItemManager pdbItemManager) {
-    log.info("DynamoDbPretenderClient({},{},{},{})", pretenderDatabaseManager, pdbTableManager, pdbTableConverter, pdbItemManager);
+    log.info("DynamoDbPretenderClient({},{},{})", pdbTableManager, pdbTableConverter, pdbItemManager);
     this.pdbTableManager = pdbTableManager;
-    this.pretenderDatabaseManager = pretenderDatabaseManager;
     this.pdbTableConverter = pdbTableConverter;
     this.pdbItemManager = pdbItemManager;
   }

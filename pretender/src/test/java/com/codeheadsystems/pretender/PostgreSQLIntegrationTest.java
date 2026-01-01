@@ -18,7 +18,6 @@ package com.codeheadsystems.pretender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.codeheadsystems.pretender.DynamoDbStreamsPretenderClient;
 import com.codeheadsystems.pretender.dagger.PretenderComponent;
 import java.util.List;
 import java.util.Map;
@@ -26,38 +25,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.Projection;
-import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
-import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
-import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
-import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
-import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
-import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
-import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
-import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
-import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
-import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.dynamodb.model.Record;
-import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 
 /**
  * Comprehensive integration test using PostgreSQL via Testcontainers.

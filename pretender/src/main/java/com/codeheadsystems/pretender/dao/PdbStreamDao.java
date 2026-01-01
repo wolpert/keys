@@ -5,7 +5,6 @@ import com.codeheadsystems.pretender.model.ImmutablePdbStreamRecord;
 import com.codeheadsystems.pretender.model.PdbStreamRecord;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.jdbi.v3.core.Jdbi;
@@ -85,14 +84,14 @@ public class PdbStreamDao {
   /**
    * Gets stream records starting from a sequence number.
    *
-   * @param tableName      the stream table name
-   * @param startSequence  the starting sequence number (exclusive)
-   * @param limit          the maximum number of records to return
+   * @param tableName     the stream table name
+   * @param startSequence the starting sequence number (exclusive)
+   * @param limit         the maximum number of records to return
    * @return the list of stream records
    */
   public List<PdbStreamRecord> getRecords(final String tableName,
-                                           final long startSequence,
-                                           final int limit) {
+                                          final long startSequence,
+                                          final int limit) {
     log.trace("getRecords({}, {}, {})", tableName, startSequence, limit);
 
     final String sql = String.format(
@@ -187,8 +186,8 @@ public class PdbStreamDao {
    * Deletes stream records older than the specified cutoff time.
    * Used for 24-hour cleanup.
    *
-   * @param tableName   the stream table name
-   * @param cutoffTime  the cutoff instant (records older than this will be deleted)
+   * @param tableName  the stream table name
+   * @param cutoffTime the cutoff instant (records older than this will be deleted)
    * @return the number of records deleted
    */
   public int deleteOlderThan(final String tableName, final Instant cutoffTime) {

@@ -53,11 +53,11 @@ public class PdbStreamManager {
   /**
    * Instantiates a new Pdb stream manager.
    *
-   * @param metadataDao            the metadata dao
-   * @param streamDao              the stream dao
-   * @param streamTableManager     the stream table manager
-   * @param streamRecordConverter  the stream record converter
-   * @param shardIteratorCodec     the shard iterator codec
+   * @param metadataDao           the metadata dao
+   * @param streamDao             the stream dao
+   * @param streamTableManager    the stream table manager
+   * @param streamRecordConverter the stream record converter
+   * @param shardIteratorCodec    the shard iterator codec
    */
   @Inject
   public PdbStreamManager(final PdbMetadataDao metadataDao,

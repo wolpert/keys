@@ -47,18 +47,18 @@ public class TtlCleanupService {
   /**
    * Instantiates a new TTL cleanup service.
    *
-   * @param tableManager              the table manager
-   * @param itemTableManager          the item table manager
-   * @param itemDao                   the item DAO
-   * @param attributeValueConverter   the attribute value converter
-   * @param clock                     the clock
+   * @param tableManager            the table manager
+   * @param itemTableManager        the item table manager
+   * @param itemDao                 the item DAO
+   * @param attributeValueConverter the attribute value converter
+   * @param clock                   the clock
    */
   @Inject
   public TtlCleanupService(final PdbTableManager tableManager,
-                            final PdbItemTableManager itemTableManager,
-                            final PdbItemDao itemDao,
-                            final AttributeValueConverter attributeValueConverter,
-                            final Clock clock) {
+                           final PdbItemTableManager itemTableManager,
+                           final PdbItemDao itemDao,
+                           final AttributeValueConverter attributeValueConverter,
+                           final Clock clock) {
     this(tableManager, itemTableManager, itemDao, attributeValueConverter, clock,
         DEFAULT_CLEANUP_INTERVAL_SECONDS, DEFAULT_BATCH_SIZE);
   }
@@ -66,21 +66,21 @@ public class TtlCleanupService {
   /**
    * Instantiates a new TTL cleanup service with custom settings.
    *
-   * @param tableManager              the table manager
-   * @param itemTableManager          the item table manager
-   * @param itemDao                   the item DAO
-   * @param attributeValueConverter   the attribute value converter
-   * @param clock                     the clock
-   * @param cleanupIntervalSeconds    the cleanup interval in seconds
-   * @param batchSize                 the batch size for deletes
+   * @param tableManager            the table manager
+   * @param itemTableManager        the item table manager
+   * @param itemDao                 the item DAO
+   * @param attributeValueConverter the attribute value converter
+   * @param clock                   the clock
+   * @param cleanupIntervalSeconds  the cleanup interval in seconds
+   * @param batchSize               the batch size for deletes
    */
   public TtlCleanupService(final PdbTableManager tableManager,
-                            final PdbItemTableManager itemTableManager,
-                            final PdbItemDao itemDao,
-                            final AttributeValueConverter attributeValueConverter,
-                            final Clock clock,
-                            final long cleanupIntervalSeconds,
-                            final int batchSize) {
+                           final PdbItemTableManager itemTableManager,
+                           final PdbItemDao itemDao,
+                           final AttributeValueConverter attributeValueConverter,
+                           final Clock clock,
+                           final long cleanupIntervalSeconds,
+                           final int batchSize) {
     log.info("TtlCleanupService({}, {}, {}, {}, {}, interval={}s, batch={})",
         tableManager, itemTableManager, itemDao, attributeValueConverter, clock,
         cleanupIntervalSeconds, batchSize);
@@ -260,15 +260,15 @@ public class TtlCleanupService {
   /**
    * Deletes an item from all GSI tables.
    *
-   * @param metadata          the table metadata
-   * @param itemAttrs         the item attributes
-   * @param mainHashKeyValue  the main table hash key value
-   * @param mainSortKeyValue  the main table sort key value
+   * @param metadata         the table metadata
+   * @param itemAttrs        the item attributes
+   * @param mainHashKeyValue the main table hash key value
+   * @param mainSortKeyValue the main table sort key value
    */
   private void deleteFromGsiTables(final PdbMetadata metadata,
-                                    final Map<String, AttributeValue> itemAttrs,
-                                    final String mainHashKeyValue,
-                                    final Optional<String> mainSortKeyValue) {
+                                   final Map<String, AttributeValue> itemAttrs,
+                                   final String mainHashKeyValue,
+                                   final Optional<String> mainSortKeyValue) {
     if (metadata.globalSecondaryIndexes().isEmpty()) {
       return;
     }
@@ -359,8 +359,8 @@ public class TtlCleanupService {
    * @return the composite sort key
    */
   private String buildCompositeSortKey(final Optional<String> gsiSortKeyValue,
-                                        final String mainHashKeyValue,
-                                        final Optional<String> mainSortKeyValue) {
+                                       final String mainHashKeyValue,
+                                       final Optional<String> mainSortKeyValue) {
     final StringBuilder sb = new StringBuilder();
 
     gsiSortKeyValue.ifPresent(gsk -> sb.append(gsk).append("#"));

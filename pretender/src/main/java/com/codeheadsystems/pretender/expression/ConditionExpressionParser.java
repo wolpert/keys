@@ -55,10 +55,10 @@ public class ConditionExpressionParser {
   /**
    * Evaluates a ConditionExpression against an item.
    *
-   * @param item                        the item to evaluate against (can be null for deleteItem on non-existent item)
-   * @param conditionExpression         the condition expression
-   * @param expressionAttributeValues   the expression attribute values
-   * @param expressionAttributeNames    the expression attribute names (optional)
+   * @param item                      the item to evaluate against (can be null for deleteItem on non-existent item)
+   * @param conditionExpression       the condition expression
+   * @param expressionAttributeValues the expression attribute values
+   * @param expressionAttributeNames  the expression attribute names (optional)
    * @return true if condition is satisfied, false otherwise
    */
   public boolean evaluate(final Map<String, AttributeValue> item,
@@ -82,9 +82,9 @@ public class ConditionExpressionParser {
    * Simplified approach: check for atomic conditions first, then split on OR, then AND.
    */
   private boolean evaluateCondition(final Map<String, AttributeValue> item,
-                                     final String condition,
-                                     final Map<String, AttributeValue> values,
-                                     final Map<String, String> names) {
+                                    final String condition,
+                                    final Map<String, AttributeValue> values,
+                                    final Map<String, String> names) {
     final String trimmed = condition.trim();
 
     // Handle parentheses for grouping - only strip if they wrap the entire expression

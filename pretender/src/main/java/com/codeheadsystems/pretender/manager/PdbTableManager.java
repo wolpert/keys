@@ -26,9 +26,9 @@ public class PdbTableManager {
   /**
    * Instantiates a new PdbMetadata manager.
    *
-   * @param pdbMetadataDao         the dao
-   * @param pdbItemTableManager    the item table manager
-   * @param pdbStreamTableManager  the stream table manager
+   * @param pdbMetadataDao        the dao
+   * @param pdbItemTableManager   the item table manager
+   * @param pdbStreamTableManager the stream table manager
    */
   @Inject
   public PdbTableManager(final PdbMetadataDao pdbMetadataDao,

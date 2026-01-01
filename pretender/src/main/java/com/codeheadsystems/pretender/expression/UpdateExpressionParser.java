@@ -56,10 +56,10 @@ public class UpdateExpressionParser {
   /**
    * Applies an UpdateExpression to an AttributeValue map.
    *
-   * @param item                        the current item attributes
-   * @param updateExpression            the update expression
-   * @param expressionAttributeValues   the expression attribute values
-   * @param expressionAttributeNames    the expression attribute names (optional)
+   * @param item                      the current item attributes
+   * @param updateExpression          the update expression
+   * @param expressionAttributeValues the expression attribute values
+   * @param expressionAttributeNames  the expression attribute names (optional)
    * @return the updated attributes map
    */
   public Map<String, AttributeValue> applyUpdate(
@@ -139,8 +139,8 @@ public class UpdateExpressionParser {
    * Process REMOVE actions.
    */
   private void processREMOVE(final Map<String, AttributeValue> item,
-                              final String updateExpression,
-                              final Map<String, String> names) {
+                             final String updateExpression,
+                             final Map<String, String> names) {
     final Matcher removeMatcher = REMOVE_PATTERN.matcher(updateExpression);
     if (!removeMatcher.find()) {
       return;
@@ -204,9 +204,9 @@ public class UpdateExpressionParser {
    * Process DELETE actions.
    */
   private void processDELETE(final Map<String, AttributeValue> item,
-                              final String updateExpression,
-                              final Map<String, AttributeValue> values,
-                              final Map<String, String> names) {
+                             final String updateExpression,
+                             final Map<String, AttributeValue> values,
+                             final Map<String, String> names) {
     final Matcher deleteMatcher = DELETE_PATTERN.matcher(updateExpression);
     if (!deleteMatcher.find()) {
       return;
@@ -232,11 +232,11 @@ public class UpdateExpressionParser {
    * Apply list_append function.
    */
   private void applyListAppend(final Map<String, AttributeValue> item,
-                                final String attrName,
-                                final String list1Expr,
-                                final String list2Expr,
-                                final Map<String, AttributeValue> values,
-                                final Map<String, String> names) {
+                               final String attrName,
+                               final String list1Expr,
+                               final String list2Expr,
+                               final Map<String, AttributeValue> values,
+                               final Map<String, String> names) {
     final AttributeValue list1 = resolveValueOrAttribute(list1Expr, item, values, names);
     final AttributeValue list2 = resolveValueOrAttribute(list2Expr, item, values, names);
 
@@ -258,11 +258,11 @@ public class UpdateExpressionParser {
    * Apply if_not_exists function.
    */
   private void applyIfNotExists(final Map<String, AttributeValue> item,
-                                 final String attrName,
-                                 final String checkAttrExpr,
-                                 final String defaultValueExpr,
-                                 final Map<String, AttributeValue> values,
-                                 final Map<String, String> names) {
+                                final String attrName,
+                                final String checkAttrExpr,
+                                final String defaultValueExpr,
+                                final Map<String, AttributeValue> values,
+                                final Map<String, String> names) {
     final String checkAttr = resolveAttributeName(checkAttrExpr, names);
     if (!item.containsKey(checkAttr)) {
       final AttributeValue defaultValue = resolveValue(defaultValueExpr, values);
@@ -274,11 +274,11 @@ public class UpdateExpressionParser {
    * Apply numeric addition.
    */
   private void applyNumericAdd(final Map<String, AttributeValue> item,
-                                final String attrName,
-                                final String operandExpr,
-                                final String addValueExpr,
-                                final Map<String, AttributeValue> values,
-                                final Map<String, String> names) {
+                               final String attrName,
+                               final String operandExpr,
+                               final String addValueExpr,
+                               final Map<String, AttributeValue> values,
+                               final Map<String, String> names) {
     final String operandAttr = resolveAttributeName(operandExpr, names);
     final AttributeValue current = item.get(operandAttr);
     final AttributeValue addValue = resolveValue(addValueExpr, values);
@@ -324,8 +324,8 @@ public class UpdateExpressionParser {
    * Delete values from a set.
    */
   private void deleteFromSet(final Map<String, AttributeValue> item,
-                              final String attrName,
-                              final AttributeValue deleteValue) {
+                             final String attrName,
+                             final AttributeValue deleteValue) {
     final AttributeValue current = item.get(attrName);
     if (current == null) {
       return;
@@ -390,9 +390,9 @@ public class UpdateExpressionParser {
    * Resolve value from either attribute or expression values.
    */
   private AttributeValue resolveValueOrAttribute(final String expr,
-                                                  final Map<String, AttributeValue> item,
-                                                  final Map<String, AttributeValue> values,
-                                                  final Map<String, String> names) {
+                                                 final Map<String, AttributeValue> item,
+                                                 final Map<String, AttributeValue> values,
+                                                 final Map<String, String> names) {
     if (expr.startsWith(":")) {
       return resolveValue(expr, values);
     } else {

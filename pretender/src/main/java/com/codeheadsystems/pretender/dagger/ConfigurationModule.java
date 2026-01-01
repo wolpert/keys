@@ -1,7 +1,7 @@
 package com.codeheadsystems.pretender.dagger;
 
-import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.dbu.model.Database;
+import com.codeheadsystems.pretender.model.Configuration;
 import dagger.Module;
 import dagger.Provides;
 import javax.inject.Named;
@@ -11,16 +11,12 @@ import javax.inject.Singleton;
  * The type Configuration module.
  */
 @Module
-public class ConfigurationModule {
+public record ConfigurationModule(Configuration configuration, boolean runLiquibase) {
 
   /**
    * The constant RUN_LIQUIBASE.
    */
   public static final String RUN_LIQUIBASE = "runLiquibase_config";
-
-
-  private final Configuration configuration;
-  private final boolean runLiquibase;
 
 
   /**
@@ -38,10 +34,7 @@ public class ConfigurationModule {
    * @param configuration the configuration
    * @param runLiquibase  the run liquibase
    */
-  public ConfigurationModule(final Configuration configuration,
-                             final boolean runLiquibase) {
-    this.configuration = configuration;
-    this.runLiquibase = runLiquibase;
+  public ConfigurationModule {
   }
 
   /**
@@ -49,6 +42,7 @@ public class ConfigurationModule {
    *
    * @return the configuration
    */
+  @Override
   @Provides
   @Singleton
   public Configuration configuration() {
@@ -72,6 +66,7 @@ public class ConfigurationModule {
    *
    * @return the boolean
    */
+  @Override
   @Provides
   @Singleton
   @Named(RUN_LIQUIBASE)

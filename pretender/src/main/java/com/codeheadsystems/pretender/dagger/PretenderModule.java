@@ -1,8 +1,8 @@
 package com.codeheadsystems.pretender.dagger;
 
-import com.codeheadsystems.pretender.dao.PdbMetadataDao;
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
+import com.codeheadsystems.pretender.dao.PdbMetadataDao;
 import com.codeheadsystems.pretender.model.PdbGlobalSecondaryIndex;
 import com.codeheadsystems.pretender.model.PdbItem;
 import com.codeheadsystems.pretender.model.PdbMetadata;
@@ -54,19 +54,19 @@ public class PretenderModule {
     jdbi.registerColumnMapper(new com.codeheadsystems.pretender.dao.GsiListColumnMapper(objectMapper));
 
     return jdbi;
-    }
+  }
 
-    /**
-     * Immutable classes set.
-     *
-     * @return the set
-     */
-    @Provides
-    @Singleton
-    @Named(JdbiFactory.IMMUTABLES)
-    public Set<Class<?>> immutableClasses() {
-      return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class, PdbStreamRecord.class);
-    }
+  /**
+   * Immutable classes set.
+   *
+   * @return the set
+   */
+  @Provides
+  @Singleton
+  @Named(JdbiFactory.IMMUTABLES)
+  public Set<Class<?>> immutableClasses() {
+    return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class, PdbStreamRecord.class);
+  }
 
   /**
    * Object mapper for JSON serialization.

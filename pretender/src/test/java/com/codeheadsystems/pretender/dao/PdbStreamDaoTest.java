@@ -274,8 +274,8 @@ class PdbStreamDaoTest extends BaseJdbiTest {
   }
 
   private PdbStreamRecord createTestRecordWithTimestamp(final String eventId,
-                                                         final String eventType,
-                                                         final Instant timestamp) {
+                                                        final String eventType,
+                                                        final Instant timestamp) {
     return ImmutablePdbStreamRecord.builder()
         .sequenceNumber(0L) // Will be auto-generated
         .eventId(eventId)

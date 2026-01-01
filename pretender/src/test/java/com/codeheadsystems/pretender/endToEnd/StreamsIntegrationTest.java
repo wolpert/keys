@@ -5,34 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.codeheadsystems.pretender.DynamoDbPretenderClient;
 import com.codeheadsystems.pretender.DynamoDbStreamsPretenderClient;
 import com.codeheadsystems.pretender.manager.PdbTableManager;
-import com.codeheadsystems.pretender.model.ImmutablePdbMetadata;
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
-import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
-import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
-import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
-import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
-import software.amazon.awssdk.services.dynamodb.model.OperationType;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.dynamodb.model.Record;
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
-import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
-import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 /**
  * Integration tests for DynamoDB Streams functionality.
