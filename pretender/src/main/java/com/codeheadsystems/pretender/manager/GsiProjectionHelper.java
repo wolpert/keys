@@ -30,10 +30,10 @@ public class GsiProjectionHelper {
   /**
    * Applies GSI projection to an item's attributes.
    *
-   * @param item            the complete item attributes
-   * @param gsi             the GSI metadata
-   * @param baseHashKey     the base table hash key name
-   * @param baseSortKey     the base table sort key name (optional)
+   * @param item        the complete item attributes
+   * @param gsi         the GSI metadata
+   * @param baseHashKey the base table hash key name
+   * @param baseSortKey the base table sort key name (optional)
    * @return the projected attributes
    */
   public Map<String, AttributeValue> applyProjection(
@@ -94,10 +94,6 @@ public class GsiProjectionHelper {
       return false;
     }
 
-    if (gsi.sortKey().isPresent() && !item.containsKey(gsi.sortKey().get())) {
-      return false;
-    }
-
-    return true;
+    return gsi.sortKey().isEmpty() || item.containsKey(gsi.sortKey().get());
   }
 }

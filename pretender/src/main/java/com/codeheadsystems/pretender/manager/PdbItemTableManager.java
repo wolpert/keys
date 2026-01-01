@@ -146,7 +146,7 @@ public class PdbItemTableManager {
    * @param gsi       the GSI metadata
    */
   private void createGsiTable(final org.jdbi.v3.core.Handle handle, final String tableName, final PdbGlobalSecondaryIndex gsi,
-                               final PdbMetadata metadata) {
+                              final PdbMetadata metadata) {
     final String gsiTableName = getGsiTableName(tableName, gsi.indexName());
     log.info("createGsiTable: {}", gsiTableName);
 
@@ -202,20 +202,20 @@ public class PdbItemTableManager {
     final String quotedTableName = "\"" + tableName + "\"";
 
     // Build the SQL
-    return String.format(
-        "CREATE TABLE IF NOT EXISTS %s (" +
-            "hash_key_value VARCHAR(2048) NOT NULL, " +
-            "sort_key_value VARCHAR(2048) %s, " +
-            "attributes_json %s NOT NULL, " +
-            "create_date TIMESTAMP NOT NULL, " +
-            "update_date TIMESTAMP NOT NULL, " +
-            "%s" +
-            ")",
+    return String.format("""
+            CREATE TABLE IF NOT EXISTS %s (
+              hash_key_value VARCHAR(2048) NOT NULL,
+              sort_key_value VARCHAR(2048) %s,
+              attributes_json %s NOT NULL,
+              create_date TIMESTAMP NOT NULL,
+              update_date TIMESTAMP NOT NULL,
+              %s
+            )
+            """,
         quotedTableName,
         hasSortKey ? "NOT NULL" : "NULL",
         jsonColumnType,
-        primaryKeyConstraint
-    );
+        primaryKeyConstraint);
   }
 
   /**
@@ -240,14 +240,15 @@ public class PdbItemTableManager {
 
     // Build the SQL - sort_key_value is always NOT NULL for GSI tables
     return String.format(
-        "CREATE TABLE IF NOT EXISTS %s (" +
-            "hash_key_value VARCHAR(2048) NOT NULL, " +
-            "sort_key_value VARCHAR(2048) NOT NULL, " +  // Always NOT NULL for GSI
-            "attributes_json %s NOT NULL, " +
-            "create_date TIMESTAMP NOT NULL, " +
-            "update_date TIMESTAMP NOT NULL, " +
-            "%s" +
-            ")",
+        """
+            CREATE TABLE IF NOT EXISTS %s (
+                hash_key_value VARCHAR(2048) NOT NULL,
+                sort_key_value VARCHAR(2048) NOT NULL,
+                attributes_json %s NOT NULL,
+                create_date TIMESTAMP NOT NULL,
+                update_date TIMESTAMP NOT NULL,
+                %s)
+            """,
         quotedTableName,
         jsonColumnType,
         primaryKeyConstraint

@@ -57,8 +57,8 @@ public class PdbTableConverter {
     // Extract Global Secondary Indexes
     final List<PdbGlobalSecondaryIndex> gsiList = createTableRequest.hasGlobalSecondaryIndexes()
         ? createTableRequest.globalSecondaryIndexes().stream()
-            .map(this::convertGlobalSecondaryIndex)
-            .collect(Collectors.toList())
+        .map(this::convertGlobalSecondaryIndex)
+        .collect(Collectors.toList())
         : List.of();
 
     return ImmutablePdbMetadata.builder()

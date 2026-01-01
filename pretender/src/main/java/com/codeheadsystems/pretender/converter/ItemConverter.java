@@ -128,7 +128,7 @@ public class ItemConverter {
    * @return the filtered item
    */
   public Map<String, AttributeValue> applyProjection(final Map<String, AttributeValue> item,
-                                                      final String projectionExpression) {
+                                                     final String projectionExpression) {
     log.trace("applyProjection({}, {})", item, projectionExpression);
 
     if (projectionExpression == null || projectionExpression.isBlank()) {

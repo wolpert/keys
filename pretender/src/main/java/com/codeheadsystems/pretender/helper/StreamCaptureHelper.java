@@ -34,16 +34,16 @@ public class StreamCaptureHelper {
   /**
    * Instantiates a new Stream capture helper.
    *
-   * @param metadataDao              the metadata dao
-   * @param streamDao                the stream dao
-   * @param streamTableManager       the stream table manager
-   * @param attributeValueConverter  the attribute value converter
+   * @param metadataDao             the metadata dao
+   * @param streamDao               the stream dao
+   * @param streamTableManager      the stream table manager
+   * @param attributeValueConverter the attribute value converter
    */
   @Inject
   public StreamCaptureHelper(final PdbMetadataDao metadataDao,
-                              final PdbStreamDao streamDao,
-                              final PdbStreamTableManager streamTableManager,
-                              final AttributeValueConverter attributeValueConverter) {
+                             final PdbStreamDao streamDao,
+                             final PdbStreamTableManager streamTableManager,
+                             final AttributeValueConverter attributeValueConverter) {
     log.info("StreamCaptureHelper({}, {}, {}, {})", metadataDao, streamDao, streamTableManager, attributeValueConverter);
     this.metadataDao = metadataDao;
     this.streamDao = streamDao;
@@ -115,8 +115,8 @@ public class StreamCaptureHelper {
    * @param newItem   the new item
    */
   public void captureModify(final String tableName,
-                             final Map<String, AttributeValue> oldItem,
-                             final Map<String, AttributeValue> newItem) {
+                            final Map<String, AttributeValue> oldItem,
+                            final Map<String, AttributeValue> newItem) {
     log.trace("captureModify({}, {}, {})", tableName, oldItem, newItem);
 
     final Optional<PdbMetadata> metadata = metadataDao.getTable(tableName);

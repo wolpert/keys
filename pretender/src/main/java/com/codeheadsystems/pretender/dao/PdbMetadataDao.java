@@ -54,7 +54,7 @@ public interface PdbMetadataDao {
   /**
    * Update TTL settings.
    *
-   * @param name              the table name
+   * @param name             the table name
    * @param ttlAttributeName the TTL attribute name
    * @param ttlEnabled       whether TTL is enabled
    * @return the boolean
@@ -67,11 +67,11 @@ public interface PdbMetadataDao {
   /**
    * Update stream configuration.
    *
-   * @param name            the table name
-   * @param streamEnabled   whether streams are enabled
-   * @param streamViewType  the stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES)
-   * @param streamArn       the stream ARN
-   * @param streamLabel     the stream label
+   * @param name           the table name
+   * @param streamEnabled  whether streams are enabled
+   * @param streamViewType the stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES)
+   * @param streamArn      the stream ARN
+   * @param streamLabel    the stream label
    * @return the boolean
    */
   @SqlUpdate("update PDB_TABLE set STREAM_ENABLED = :streamEnabled, STREAM_VIEW_TYPE = :streamViewType, " +

@@ -361,7 +361,7 @@ public class GsiWithTtlTest extends BaseEndToEndTest {
   }
 
   private void putItemWithStatusAndTtl(final String userId, final String status,
-                                        final long ttlTimestamp, final String data) {
+                                       final long ttlTimestamp, final String data) {
     final Map<String, AttributeValue> item = new HashMap<>();
     item.put("userId", AttributeValue.builder().s(userId).build());
     item.put("status", AttributeValue.builder().s(status).build());
@@ -377,7 +377,7 @@ public class GsiWithTtlTest extends BaseEndToEndTest {
   }
 
   private void putItemWithStatusCategoryAndTtl(final String userId, final String status,
-                                                final String category, final long ttlTimestamp) {
+                                               final String category, final long ttlTimestamp) {
     final Map<String, AttributeValue> item = new HashMap<>();
     item.put("userId", AttributeValue.builder().s(userId).build());
     item.put("status", AttributeValue.builder().s(status).build());

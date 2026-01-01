@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests for PdbStreamTableManager.
- *
+ * <p>
  * Previously experienced JVM assertion failures due to OutOfMemoryError when running the full test suite.
  * Fixed by adding proper HSQLDB shutdown in BaseJdbiTest.shutdownJdbi().
  */

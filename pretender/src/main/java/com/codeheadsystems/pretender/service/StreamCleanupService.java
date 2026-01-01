@@ -39,10 +39,10 @@ public class StreamCleanupService {
   /**
    * Instantiates a new Stream cleanup service.
    *
-   * @param metadataDao          the metadata dao
-   * @param streamDao            the stream dao
-   * @param streamTableManager   the stream table manager
-   * @param clock                the clock
+   * @param metadataDao        the metadata dao
+   * @param streamDao          the stream dao
+   * @param streamTableManager the stream table manager
+   * @param clock              the clock
    */
   @Inject
   public StreamCleanupService(final PdbMetadataDao metadataDao,
@@ -55,11 +55,11 @@ public class StreamCleanupService {
   /**
    * Instantiates a new Stream cleanup service with custom interval.
    *
-   * @param metadataDao             the metadata dao
-   * @param streamDao               the stream dao
-   * @param streamTableManager      the stream table manager
-   * @param clock                   the clock
-   * @param cleanupIntervalSeconds  the cleanup interval in seconds
+   * @param metadataDao            the metadata dao
+   * @param streamDao              the stream dao
+   * @param streamTableManager     the stream table manager
+   * @param clock                  the clock
+   * @param cleanupIntervalSeconds the cleanup interval in seconds
    */
   public StreamCleanupService(final PdbMetadataDao metadataDao,
                               final PdbStreamDao streamDao,

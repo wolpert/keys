@@ -21,9 +21,9 @@ import static com.codeheadsystems.pretender.dagger.PretenderModule.LIQUIBASE_SET
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
 import com.codeheadsystems.dbu.model.ImmutableDatabase;
+import com.codeheadsystems.pretender.dagger.PretenderModule;
 import com.codeheadsystems.pretender.dao.GsiListArgumentFactory;
 import com.codeheadsystems.pretender.dao.GsiListColumnMapper;
-import com.codeheadsystems.pretender.dagger.PretenderModule;
 import com.codeheadsystems.pretender.model.Configuration;
 import com.codeheadsystems.pretender.model.ImmutableConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;

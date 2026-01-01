@@ -77,19 +77,19 @@ public class PdbItemDao {
    * @return the item
    */
   public Optional<PdbItem> get(final String tableName,
-                                final String hashKeyValue,
-                                final Optional<String> sortKeyValue) {
+                               final String hashKeyValue,
+                               final Optional<String> sortKeyValue) {
     log.trace("get({}, {}, {})", tableName, hashKeyValue, sortKeyValue);
 
     final String sql = sortKeyValue.isPresent()
         ? String.format(
-            "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey AND sort_key_value = :sortKey",
-            tableName
-        )
+        "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey AND sort_key_value = :sortKey",
+        tableName
+    )
         : String.format(
-            "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey",
-            tableName
-        );
+        "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey",
+        tableName
+    );
 
     return jdbi.withHandle(handle -> {
       var query = handle.createQuery(sql)
@@ -129,17 +129,17 @@ public class PdbItemDao {
 
     final String sql = item.sortKeyValue().isPresent()
         ? String.format(
-            "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
-                "WHERE hash_key_value = :hashKeyValue AND sort_key_value = :sortKeyValue",
-            tableName,
-            jsonValuePlaceholder
-        )
+        "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
+            "WHERE hash_key_value = :hashKeyValue AND sort_key_value = :sortKeyValue",
+        tableName,
+        jsonValuePlaceholder
+    )
         : String.format(
-            "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
-                "WHERE hash_key_value = :hashKeyValue",
-            tableName,
-            jsonValuePlaceholder
-        );
+        "UPDATE \"%s\" SET attributes_json = %s, update_date = :updateDate " +
+            "WHERE hash_key_value = :hashKeyValue",
+        tableName,
+        jsonValuePlaceholder
+    );
 
     return jdbi.withHandle(handle ->
         handle.createUpdate(sql)
@@ -166,13 +166,13 @@ public class PdbItemDao {
 
     final String sql = sortKeyValue.isPresent()
         ? String.format(
-            "DELETE FROM \"%s\" WHERE hash_key_value = :hashKey AND sort_key_value = :sortKey",
-            tableName
-        )
+        "DELETE FROM \"%s\" WHERE hash_key_value = :hashKey AND sort_key_value = :sortKey",
+        tableName
+    )
         : String.format(
-            "DELETE FROM \"%s\" WHERE hash_key_value = :hashKey",
-            tableName
-        );
+        "DELETE FROM \"%s\" WHERE hash_key_value = :hashKey",
+        tableName
+    );
 
     return jdbi.withHandle(handle -> {
       var update = handle.createUpdate(sql)

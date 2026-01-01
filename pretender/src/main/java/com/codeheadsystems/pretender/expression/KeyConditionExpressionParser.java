@@ -42,26 +42,26 @@ public class KeyConditionExpressionParser {
    * Parses a KeyConditionExpression and returns the SQL WHERE clause and sort key value.
    * Backward-compatible overload without expression attribute names.
    *
-   * @param keyConditionExpression      the key condition expression
-   * @param expressionAttributeValues   the expression attribute values
+   * @param keyConditionExpression    the key condition expression
+   * @param expressionAttributeValues the expression attribute values
    * @return the parsed result
    */
   public ParsedKeyCondition parse(final String keyConditionExpression,
-                                   final Map<String, AttributeValue> expressionAttributeValues) {
+                                  final Map<String, AttributeValue> expressionAttributeValues) {
     return parse(keyConditionExpression, expressionAttributeValues, null);
   }
 
   /**
    * Parses a KeyConditionExpression and returns the SQL WHERE clause and sort key value.
    *
-   * @param keyConditionExpression      the key condition expression
-   * @param expressionAttributeValues   the expression attribute values
-   * @param expressionAttributeNames    the expression attribute names (optional, can be null)
+   * @param keyConditionExpression    the key condition expression
+   * @param expressionAttributeValues the expression attribute values
+   * @param expressionAttributeNames  the expression attribute names (optional, can be null)
    * @return the parsed result
    */
   public ParsedKeyCondition parse(final String keyConditionExpression,
-                                   final Map<String, AttributeValue> expressionAttributeValues,
-                                   final Map<String, String> expressionAttributeNames) {
+                                  final Map<String, AttributeValue> expressionAttributeValues,
+                                  final Map<String, String> expressionAttributeNames) {
     log.trace("parse({}, {}, {})", keyConditionExpression, expressionAttributeValues, expressionAttributeNames);
 
     if (keyConditionExpression == null || keyConditionExpression.isBlank()) {
@@ -247,52 +247,49 @@ public class KeyConditionExpressionParser {
 
   /**
    * Result of parsing a KeyConditionExpression.
+   *
+   * @param sortKeyCondition SQL WHERE clause fragment for sort key
+   * @param sortKeyValue     Value to bind to :sortKey
    */
-  public static class ParsedKeyCondition {
-    private final String hashKeyValue;
-    private final String sortKeyCondition;  // SQL WHERE clause fragment for sort key
-    private final Optional<String> sortKeyValue;  // Value to bind to :sortKey
-
+    public record ParsedKeyCondition(String hashKeyValue, String sortKeyCondition, Optional<String> sortKeyValue) {
     /**
      * Instantiates a new Parsed key condition.
      *
-     * @param hashKeyValue      the hash key value
-     * @param sortKeyCondition  the sort key condition
-     * @param sortKeyValue      the sort key value
+     * @param hashKeyValue     the hash key value
+     * @param sortKeyCondition the sort key condition
+     * @param sortKeyValue     the sort key value
      */
-    public ParsedKeyCondition(final String hashKeyValue,
-                              final String sortKeyCondition,
-                              final Optional<String> sortKeyValue) {
-      this.hashKeyValue = hashKeyValue;
-      this.sortKeyCondition = sortKeyCondition;
-      this.sortKeyValue = sortKeyValue;
+    public ParsedKeyCondition {
     }
 
-    /**
-     * Gets hash key value.
-     *
-     * @return the hash key value
-     */
-    public String hashKeyValue() {
-      return hashKeyValue;
-    }
+      /**
+       * Gets hash key value.
+       *
+       * @return the hash key value
+       */
+      @Override
+      public String hashKeyValue() {
+        return hashKeyValue;
+      }
 
-    /**
-     * Gets sort key condition (SQL WHERE clause fragment).
-     *
-     * @return the sort key condition
-     */
-    public String sortKeyCondition() {
-      return sortKeyCondition;
-    }
+      /**
+       * Gets sort key condition (SQL WHERE clause fragment).
+       *
+       * @return the sort key condition
+       */
+      @Override
+      public String sortKeyCondition() {
+        return sortKeyCondition;
+      }
 
-    /**
-     * Gets sort key value to bind to the SQL parameter.
-     *
-     * @return the sort key value
-     */
-    public Optional<String> sortKeyValue() {
-      return sortKeyValue;
+      /**
+       * Gets sort key value to bind to the SQL parameter.
+       *
+       * @return the sort key value
+       */
+      @Override
+      public Optional<String> sortKeyValue() {
+        return sortKeyValue;
+      }
     }
-  }
 }

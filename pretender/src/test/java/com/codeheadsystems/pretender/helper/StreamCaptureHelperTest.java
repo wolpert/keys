@@ -287,7 +287,7 @@ class StreamCaptureHelperTest {
   }
 
   private void setupMocksForCapture(String tableName, String streamTableName,
-                                     boolean streamEnabled, String viewType) {
+                                    boolean streamEnabled, String viewType) {
     final PdbMetadata metadata = createMetadata(streamEnabled, viewType);
 
     when(metadataDao.getTable(tableName)).thenReturn(Optional.of(metadata));
