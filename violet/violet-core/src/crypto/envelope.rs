@@ -39,6 +39,7 @@ impl EnvelopeEncryptor {
             return Err(VioletError::InvalidKeySize(kek.len()));
         }
 
+        // TODO: Use the RNG provided by the Aes256Gcm create instead.
         // Step 1: Generate random DEK
         let mut dek = vec![0u8; DEK_SIZE];
         rand::thread_rng().fill_bytes(&mut dek);
