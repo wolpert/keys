@@ -22,7 +22,7 @@ class PdbItemDaoTest extends BaseJdbiTest {
 
   @BeforeEach
   void setup() {
-    dao = new PdbItemDao(jdbi);
+    dao = new PdbItemDao(jdbi, configuration.database());
     tableManager = new PdbItemTableManager(jdbi, configuration.database());
 
     // Create a test table

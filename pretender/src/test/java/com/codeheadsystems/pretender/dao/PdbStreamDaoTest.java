@@ -22,7 +22,7 @@ class PdbStreamDaoTest extends BaseJdbiTest {
 
   @BeforeEach
   void setup() {
-    dao = new PdbStreamDao(jdbi);
+    dao = new PdbStreamDao(jdbi, configuration.database());
     tableManager = new PdbStreamTableManager(jdbi, configuration.database());
 
     // Create the stream table for testing

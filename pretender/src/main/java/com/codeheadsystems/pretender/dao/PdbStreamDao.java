@@ -1,5 +1,6 @@
 package com.codeheadsystems.pretender.dao;
 
+import com.codeheadsystems.dbu.model.Database;
 import com.codeheadsystems.pretender.model.ImmutablePdbStreamRecord;
 import com.codeheadsystems.pretender.model.PdbStreamRecord;
 import java.time.Instant;
@@ -21,16 +22,19 @@ public class PdbStreamDao {
   private static final Logger log = LoggerFactory.getLogger(PdbStreamDao.class);
 
   private final Jdbi jdbi;
+  private final Database database;
 
   /**
    * Instantiates a new Pdb stream dao.
    *
-   * @param jdbi the jdbi
+   * @param jdbi     the jdbi
+   * @param database the database configuration
    */
   @Inject
-  public PdbStreamDao(final Jdbi jdbi) {
-    log.info("PdbStreamDao({})", jdbi);
+  public PdbStreamDao(final Jdbi jdbi, final Database database) {
+    log.info("PdbStreamDao({}, {})", jdbi, database);
     this.jdbi = jdbi;
+    this.database = database;
   }
 
   /**
@@ -44,12 +48,21 @@ public class PdbStreamDao {
   public boolean insert(final String tableName, final PdbStreamRecord record) {
     log.trace("insert({}, {})", tableName, record);
 
+    // For PostgreSQL, we need to cast JSON strings to JSONB
+    final String jsonCast = database.usePostgresql() ? " AS JSONB)" : ")";
+    final String keysJsonPlaceholder = database.usePostgresql() ? "CAST(:keysJson AS JSONB)" : ":keysJson";
+    final String oldImageJsonPlaceholder = database.usePostgresql() ? "CAST(:oldImageJson AS JSONB)" : ":oldImageJson";
+    final String newImageJsonPlaceholder = database.usePostgresql() ? "CAST(:newImageJson AS JSONB)" : ":newImageJson";
+
     final String sql = String.format(
         "INSERT INTO \"%s\" (event_id, event_type, event_timestamp, hash_key_value, sort_key_value, " +
             "keys_json, old_image_json, new_image_json, approximate_creation_time, size_bytes, create_date) " +
             "VALUES (:eventId, :eventType, :eventTimestamp, :hashKeyValue, :sortKeyValue, " +
-            ":keysJson, :oldImageJson, :newImageJson, :approximateCreationTime, :sizeBytes, :createDate)",
-        tableName
+            "%s, %s, %s, :approximateCreationTime, :sizeBytes, :createDate)",
+        tableName,
+        keysJsonPlaceholder,
+        oldImageJsonPlaceholder,
+        newImageJsonPlaceholder
     );
 
     return jdbi.withHandle(handle ->
