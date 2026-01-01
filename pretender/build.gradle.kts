@@ -33,3 +33,11 @@ dependencies {
     testImplementation(libs.codehead.test)
 }
 
+tasks.test {
+    // Increase heap size for tests to avoid OutOfMemoryError with testcontainers
+    maxHeapSize = "2g"
+
+    // Enable testcontainers reuse to reduce memory consumption
+    systemProperty("testcontainers.reuse.enable", "true")
+}
+

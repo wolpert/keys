@@ -63,6 +63,7 @@ class PdbItemManagerTest {
   @Mock private GsiProjectionHelper gsiProjectionHelper;
   @Mock private com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   @Mock private Clock clock;
+  @Mock private org.jdbi.v3.core.Jdbi jdbi;
 
   private PdbItemManager manager;
   private PdbMetadata metadata;
@@ -71,7 +72,7 @@ class PdbItemManagerTest {
   void setup() {
     manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
         attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
-        gsiProjectionHelper, streamCaptureHelper, clock);
+        gsiProjectionHelper, streamCaptureHelper, clock, jdbi);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)
@@ -410,7 +411,8 @@ class PdbItemManagerTest {
 
     when(tableManager.getPdbTable(TABLE_NAME)).thenReturn(Optional.of(metadata));
     when(keyConditionExpressionParser.parse(eq("id = :id"), eq(values), any())).thenReturn(condition);
-    when(itemDao.query(ITEM_TABLE_NAME, "123", null, Optional.empty(), 101))
+    when(itemDao.query(eq(ITEM_TABLE_NAME), eq("123"), eq(null), eq(Optional.empty()), eq(101),
+        eq(Optional.empty()), eq(Optional.empty())))
         .thenReturn(List.of(item1));
     when(attributeValueConverter.fromJson(item1.attributesJson())).thenReturn(attr1);
 
