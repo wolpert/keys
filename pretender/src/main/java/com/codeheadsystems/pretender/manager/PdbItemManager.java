@@ -503,9 +503,22 @@ public class PdbItemManager {
     // Determine limit (default to 100 if not specified)
     final int limit = request.limit() != null ? request.limit() : 100;
 
+    // Extract ExclusiveStartKey for pagination
+    Optional<String> exclusiveStartHashKey = Optional.empty();
+    Optional<String> exclusiveStartSortKey = Optional.empty();
+
+    if (request.hasExclusiveStartKey() && request.exclusiveStartKey() != null) {
+      exclusiveStartHashKey = Optional.ofNullable(request.exclusiveStartKey().get(metadata.hashKey()))
+          .map(av -> attributeValueConverter.extractKeyValue(request.exclusiveStartKey(), metadata.hashKey()));
+      exclusiveStartSortKey = metadata.sortKey().isPresent()
+          ? Optional.ofNullable(request.exclusiveStartKey().get(metadata.sortKey().get()))
+              .map(av -> attributeValueConverter.extractKeyValue(request.exclusiveStartKey(), metadata.sortKey().get()))
+          : Optional.empty();
+    }
+
     // Scan with limit + 1 to detect if there are more results
-    // Note: ExclusiveStartKey is not supported in initial implementation
-    final List<PdbItem> items = itemDao.scan(itemTableName(tableName), limit + 1);
+    final List<PdbItem> items = itemDao.scan(itemTableName(tableName), limit + 1,
+        exclusiveStartHashKey, exclusiveStartSortKey);
 
     // Check if we have more results
     final boolean hasMore = items.size() > limit;

@@ -2407,4 +2407,113 @@ public class ItemOperationsTest extends BaseEndToEndTest {
     assertThat(getResponse.hasItem()).isTrue();
     assertThat(getResponse.item().get("description").s()).isEqualTo("valid description");
   }
+
+  @Test
+  void scan_withPagination_multiplePages() {
+    // Create 10 items with different hash keys (scan returns all items in table)
+    for (int i = 0; i < 10; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + String.format("%03d", i)).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(item)
+          .build());
+    }
+
+    // Scan with limit of 3 - should return first 3 items + LastEvaluatedKey
+    ScanRequest scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .build();
+
+    ScanResponse scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isTrue();
+    assertThat(scanResponse.lastEvaluatedKey()).isNotNull();
+
+    // Page 2
+    scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .exclusiveStartKey(scanResponse.lastEvaluatedKey())
+        .build();
+
+    scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isTrue();
+
+    // Page 3
+    scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .exclusiveStartKey(scanResponse.lastEvaluatedKey())
+        .build();
+
+    scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isTrue();
+
+    // Page 4 (final page with 1 item)
+    scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .exclusiveStartKey(scanResponse.lastEvaluatedKey())
+        .build();
+
+    scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(1);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isFalse();  // No more pages
+  }
+
+  @Test
+  void scan_withPagination_exactPageBoundary() {
+    // Create exactly 9 items (3 pages of 3 items each)
+    for (int i = 0; i < 9; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + String.format("%03d", i)).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(item)
+          .build());
+    }
+
+    // Page 1
+    ScanRequest scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .build();
+
+    ScanResponse scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isTrue();
+
+    // Page 2
+    scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .exclusiveStartKey(scanResponse.lastEvaluatedKey())
+        .build();
+
+    scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isTrue();
+
+    // Page 3 (final page, exactly 3 items - should have no LastEvaluatedKey)
+    scanRequest = ScanRequest.builder()
+        .tableName(TABLE_NAME)
+        .limit(3)
+        .exclusiveStartKey(scanResponse.lastEvaluatedKey())
+        .build();
+
+    scanResponse = client.scan(scanRequest);
+    assertThat(scanResponse.items()).hasSize(3);
+    assertThat(scanResponse.hasLastEvaluatedKey()).isFalse();  // No more pages (exact boundary)
+  }
+
 }

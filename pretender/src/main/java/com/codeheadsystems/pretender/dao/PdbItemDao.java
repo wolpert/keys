@@ -436,30 +436,66 @@ public class PdbItemDao {
    * @param limit     the maximum number of items to return
    * @return the list of items
    */
-  public List<PdbItem> scan(final String tableName, final int limit) {
-    log.trace("scan({}, {})", tableName, limit);
+  public List<PdbItem> scan(final String tableName, final int limit,
+                            final Optional<String> exclusiveStartHashKey,
+                            final Optional<String> exclusiveStartSortKey) {
+    log.trace("scan({}, {}, {}, {})", tableName, limit, exclusiveStartHashKey, exclusiveStartSortKey);
+
+    // Build WHERE clause for pagination
+    // Note: We use standard SQL comparison instead of tuple comparison for HSQLDB compatibility
+    String whereClause = "";
+    if (exclusiveStartHashKey.isPresent()) {
+      // For pagination, we need to start after the last evaluated key
+      // Since scan returns items ordered by (hash_key, sort_key), we filter using:
+      // WHERE (hash_key > last_hash) OR (hash_key = last_hash AND sort_key > last_sort)
+      if (exclusiveStartSortKey.isPresent()) {
+        whereClause = "WHERE (hash_key_value > :exclusiveHashKey) OR " +
+                     "(hash_key_value = :exclusiveHashKey AND COALESCE(sort_key_value, '') > :exclusiveSortKey)";
+      } else {
+        whereClause = "WHERE hash_key_value > :exclusiveHashKey";
+      }
+    }
 
     final String sql = String.format(
-        "SELECT * FROM \"%s\" LIMIT :limit",
-        tableName
+        "SELECT * FROM \"%s\" %s ORDER BY hash_key_value, sort_key_value LIMIT :limit",
+        tableName, whereClause
     );
 
-    return jdbi.withHandle(handle ->
-        handle.createQuery(sql)
-            .bind("limit", limit)
-            .map((rs, ctx) -> {
-              final PdbItem item = com.codeheadsystems.pretender.model.ImmutablePdbItem.builder()
-                  .tableName(tableName)
-                  .hashKeyValue(rs.getString("hash_key_value"))
-                  .sortKeyValue(rs.getString("sort_key_value") != null ?
-                      Optional.of(rs.getString("sort_key_value")) : Optional.empty())
-                  .attributesJson(rs.getString("attributes_json"))
-                  .createDate(rs.getTimestamp("create_date").toInstant())
-                  .updateDate(rs.getTimestamp("update_date").toInstant())
-                  .build();
-              return item;
-            })
-            .list()
-    );
+    return jdbi.withHandle(handle -> {
+      var query = handle.createQuery(sql)
+          .bind("limit", limit);
+
+      if (exclusiveStartHashKey.isPresent()) {
+        query = query.bind("exclusiveHashKey", exclusiveStartHashKey.get());
+        if (exclusiveStartSortKey.isPresent()) {
+          query = query.bind("exclusiveSortKey", exclusiveStartSortKey.get());
+        }
+      }
+
+      return query.map((rs, ctx) -> {
+            final PdbItem item = com.codeheadsystems.pretender.model.ImmutablePdbItem.builder()
+                .tableName(tableName)
+                .hashKeyValue(rs.getString("hash_key_value"))
+                .sortKeyValue(rs.getString("sort_key_value") != null ?
+                    Optional.of(rs.getString("sort_key_value")) : Optional.empty())
+                .attributesJson(rs.getString("attributes_json"))
+                .createDate(rs.getTimestamp("create_date").toInstant())
+                .updateDate(rs.getTimestamp("update_date").toInstant())
+                .build();
+            return item;
+          })
+          .list();
+    });
+  }
+
+  /**
+   * Scan all items in a table (backward-compatible overload without pagination).
+   *
+   * @param tableName the table name
+   * @param limit the maximum number of items to return
+   * @return the list of items
+   */
+  public List<PdbItem> scan(final String tableName, final int limit) {
+    return scan(tableName, limit, Optional.empty(), Optional.empty());
   }
 }
