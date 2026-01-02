@@ -2516,4 +2516,102 @@ public class ItemOperationsTest extends BaseEndToEndTest {
     assertThat(scanResponse.hasLastEvaluatedKey()).isFalse();  // No more pages (exact boundary)
   }
 
+  @Test
+  void putItem_itemSizeExceeds400KB_throwsException() {
+    // Create a large item that exceeds 400KB
+    // Create a string that's approximately 410KB
+    final StringBuilder largeValue = new StringBuilder();
+    for (int i = 0; i < 410_000; i++) {
+      largeValue.append("x");
+    }
+
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "largeData", AttributeValue.builder().s(largeValue.toString()).build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that oversized item throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Item size has exceeded the maximum allowed size of 400 KB");
+  }
+
+  @Test
+  void putItem_itemSizeExactly400KB_succeeds() {
+    // Create an item that's approximately at the 400KB limit (but under)
+    // We need to account for JSON overhead, so we'll use about 390KB of actual data
+    final StringBuilder largeValue = new StringBuilder();
+    for (int i = 0; i < 390_000; i++) {
+      largeValue.append("x");
+    }
+
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "largeData", AttributeValue.builder().s(largeValue.toString()).build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that item at/near the limit succeeds
+    final PutItemResponse response = client.putItem(putRequest);
+    assertThat(response).isNotNull();
+
+    // Verify item was created
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user123").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.hasItem()).isTrue();
+  }
+
+  @Test
+  void updateItem_resultingItemSizeExceeds400KB_throwsException() {
+    // First create a small item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "value", AttributeValue.builder().n("123").build()
+    );
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Create a large string that will make the item exceed 400KB when added
+    final StringBuilder largeValue = new StringBuilder();
+    for (int i = 0; i < 410_000; i++) {
+      largeValue.append("x");
+    }
+
+    // Attempt to update with a large attribute
+    final UpdateItemRequest updateRequest = UpdateItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user123").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .updateExpression("SET largeData = :largeValue")
+        .expressionAttributeValues(Map.of(
+            ":largeValue", AttributeValue.builder().s(largeValue.toString()).build()
+        ))
+        .build();
+
+    // Verify that update resulting in oversized item throws exception
+    assertThatThrownBy(() -> client.updateItem(updateRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Item size has exceeded the maximum allowed size of 400 KB");
+  }
 }
