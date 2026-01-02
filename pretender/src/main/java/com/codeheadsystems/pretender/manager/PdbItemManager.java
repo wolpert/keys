@@ -739,9 +739,21 @@ public class PdbItemManager {
    *
    * @param request the batch get item request
    * @return the batch get item response
+   * @throws IllegalArgumentException if the request contains more than 100 items
    */
   public BatchGetItemResponse batchGetItem(final BatchGetItemRequest request) {
     log.trace("batchGetItem({})", request);
+
+    // Validate batch get item count (DynamoDB limit: 100 items max across all tables)
+    if (request.requestItems() != null) {
+      int totalItems = request.requestItems().values().stream()
+          .mapToInt(keysAndAttributes -> keysAndAttributes.keys() != null ? keysAndAttributes.keys().size() : 0)
+          .sum();
+      if (totalItems > 100) {
+        throw new IllegalArgumentException(
+            "BatchGetItem request cannot contain more than 100 items (received " + totalItems + " items)");
+      }
+    }
 
     final Map<String, List<Map<String, AttributeValue>>> responses = new HashMap<>();
 
@@ -785,9 +797,21 @@ public class PdbItemManager {
    *
    * @param request the batch write item request
    * @return the batch write item response with unprocessed items if any failed
+   * @throws IllegalArgumentException if the request contains more than 25 write requests
    */
   public BatchWriteItemResponse batchWriteItem(final BatchWriteItemRequest request) {
     log.trace("batchWriteItem({})", request);
+
+    // Validate batch write item count (DynamoDB limit: 25 requests max across all tables)
+    if (request.requestItems() != null) {
+      int totalRequests = request.requestItems().values().stream()
+          .mapToInt(writeRequests -> writeRequests != null ? writeRequests.size() : 0)
+          .sum();
+      if (totalRequests > 25) {
+        throw new IllegalArgumentException(
+            "BatchWriteItem request cannot contain more than 25 requests (received " + totalRequests + " requests)");
+      }
+    }
 
     // Track unprocessed items (items that failed to write)
     final Map<String, List<WriteRequest>> unprocessedItems = new HashMap<>();

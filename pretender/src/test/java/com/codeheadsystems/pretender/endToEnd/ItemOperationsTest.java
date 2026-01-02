@@ -2091,4 +2091,146 @@ public class ItemOperationsTest extends BaseEndToEndTest {
       assertThat(response.responses().get(i).item().get("value").n()).isEqualTo(String.valueOf(i + 1));
     }
   }
+
+  @Test
+  void batchGetItem_exceedsMaxItemCount_throwsException() {
+    // Create 101 items in the table (exceeds BatchGetItem limit of 100)
+    for (int i = 0; i < 101; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(item)
+          .build());
+    }
+
+    // Build batch get request with 101 keys
+    final List<Map<String, AttributeValue>> keys = new java.util.ArrayList<>();
+    for (int i = 0; i < 101; i++) {
+      keys.add(Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+      ));
+    }
+
+    final BatchGetItemRequest batchGetRequest = BatchGetItemRequest.builder()
+        .requestItems(Map.of(
+            TABLE_NAME, KeysAndAttributes.builder()
+                .keys(keys)
+                .build()
+        ))
+        .build();
+
+    // Verify that batch get with 101 items throws exception
+    assertThatThrownBy(() -> client.batchGetItem(batchGetRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("BatchGetItem request cannot contain more than 100 items")
+        .hasMessageContaining("101 items");
+  }
+
+  @Test
+  void batchGetItem_exactlyMaxItemCount_succeeds() {
+    // Create exactly 100 items in the table (at the limit)
+    for (int i = 0; i < 100; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      client.putItem(PutItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .item(item)
+          .build());
+    }
+
+    // Build batch get request with exactly 100 keys
+    final List<Map<String, AttributeValue>> keys = new java.util.ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      keys.add(Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+      ));
+    }
+
+    final BatchGetItemRequest batchGetRequest = BatchGetItemRequest.builder()
+        .requestItems(Map.of(
+            TABLE_NAME, KeysAndAttributes.builder()
+                .keys(keys)
+                .build()
+        ))
+        .build();
+
+    // Verify batch get with exactly 100 items succeeds
+    final BatchGetItemResponse response = client.batchGetItem(batchGetRequest);
+    assertThat(response).isNotNull();
+    assertThat(response.responses()).isNotNull();
+    assertThat(response.responses().get(TABLE_NAME)).hasSize(100);
+  }
+
+  @Test
+  void batchWriteItem_exceedsMaxRequestCount_throwsException() {
+    // Build batch write request with 26 write requests (exceeds limit of 25)
+    final List<WriteRequest> writeRequests = new java.util.ArrayList<>();
+    for (int i = 0; i < 26; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      writeRequests.add(WriteRequest.builder()
+          .putRequest(PutRequest.builder().item(item).build())
+          .build());
+    }
+
+    final BatchWriteItemRequest batchWriteRequest = BatchWriteItemRequest.builder()
+        .requestItems(Map.of(TABLE_NAME, writeRequests))
+        .build();
+
+    // Verify that batch write with 26 requests throws exception
+    assertThatThrownBy(() -> client.batchWriteItem(batchWriteRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("BatchWriteItem request cannot contain more than 25 requests")
+        .hasMessageContaining("26 requests");
+  }
+
+  @Test
+  void batchWriteItem_exactlyMaxRequestCount_succeeds() {
+    // Build batch write request with exactly 25 write requests (at the limit)
+    final List<WriteRequest> writeRequests = new java.util.ArrayList<>();
+    for (int i = 0; i < 25; i++) {
+      final Map<String, AttributeValue> item = Map.of(
+          HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+          SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+          "value", AttributeValue.builder().n(String.valueOf(i + 1)).build()
+      );
+      writeRequests.add(WriteRequest.builder()
+          .putRequest(PutRequest.builder().item(item).build())
+          .build());
+    }
+
+    final BatchWriteItemRequest batchWriteRequest = BatchWriteItemRequest.builder()
+        .requestItems(Map.of(TABLE_NAME, writeRequests))
+        .build();
+
+    // Verify batch write with exactly 25 requests succeeds
+    final BatchWriteItemResponse response = client.batchWriteItem(batchWriteRequest);
+    assertThat(response).isNotNull();
+    assertThat(response.unprocessedItems()).isEmpty();
+
+    // Verify all items were written
+    for (int i = 0; i < 25; i++) {
+      final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+          .tableName(TABLE_NAME)
+          .key(Map.of(
+              HASH_KEY, AttributeValue.builder().s("user" + i).build(),
+              SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+          ))
+          .build());
+      assertThat(getResponse.hasItem()).isTrue();
+      assertThat(getResponse.item().get("value").n()).isEqualTo(String.valueOf(i + 1));
+    }
+  }
 }
