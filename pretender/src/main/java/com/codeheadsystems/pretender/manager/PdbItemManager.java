@@ -97,7 +97,7 @@ public class PdbItemManager {
    *
    * @param request the request
    * @return the response
-   * @throws IllegalArgumentException if key attributes contain empty strings or binary attributes are empty
+   * @throws IllegalArgumentException if key attributes contain empty strings, binary attributes are empty, or item size exceeds 400KB
    */
   public PutItemResponse putItem(final PutItemRequest request) {
     log.trace("putItem({})", request);
@@ -107,6 +107,9 @@ public class PdbItemManager {
 
     // Validate item attributes (empty strings in keys, empty binary, etc.)
     validateItemAttributes(request.item(), metadata);
+
+    // Validate item size (400KB limit)
+    validateItemSize(request.item());
 
     // Extract key values
     final String hashKeyValue = attributeValueConverter.extractKeyValue(request.item(), metadata.hashKey());
@@ -221,7 +224,7 @@ public class PdbItemManager {
    *
    * @param request the request
    * @return the response
-   * @throws IllegalArgumentException if updated attributes contain empty strings in keys or empty binary attributes
+   * @throws IllegalArgumentException if updated attributes contain empty strings in keys, empty binary attributes, or item size exceeds 400KB
    */
   public UpdateItemResponse updateItem(final UpdateItemRequest request) {
     log.trace("updateItem({})", request);
@@ -256,6 +259,9 @@ public class PdbItemManager {
 
     // Validate updated attributes (empty strings in keys, empty binary, etc.)
     validateItemAttributes(updatedAttributes, metadata);
+
+    // Validate item size (400KB limit)
+    validateItemSize(updatedAttributes);
 
     // Capture stream event BEFORE actual write
     if (existingPdbItem.isPresent()) {
@@ -1335,6 +1341,27 @@ public class PdbItemManager {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Validates item size according to DynamoDB rules (400KB max).
+   *
+   * @param item the item to validate
+   * @throws IllegalArgumentException if item size exceeds 400KB
+   */
+  private void validateItemSize(final Map<String, AttributeValue> item) {
+    // Convert item to JSON to calculate size
+    final String json = attributeValueConverter.toJson(item);
+    final int itemSizeBytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+
+    // DynamoDB limit: 400KB (400,000 bytes)
+    final int MAX_ITEM_SIZE_BYTES = 400_000;
+
+    if (itemSizeBytes > MAX_ITEM_SIZE_BYTES) {
+      throw new IllegalArgumentException(
+          "Item size has exceeded the maximum allowed size of 400 KB " +
+          "(actual size: " + itemSizeBytes + " bytes)");
     }
   }
 }

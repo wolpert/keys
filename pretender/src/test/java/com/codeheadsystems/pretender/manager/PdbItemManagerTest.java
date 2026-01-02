@@ -80,6 +80,9 @@ class PdbItemManagerTest {
         .sortKey(SORT_KEY)
         .createDate(NOW)
         .build();
+
+    // Mock for item size validation (lenient because not all tests call putItem/updateItem)
+    org.mockito.Mockito.lenient().when(attributeValueConverter.toJson(any())).thenReturn("{}");
   }
 
   @Test
