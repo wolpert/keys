@@ -444,7 +444,7 @@ class PdbItemManagerTest {
     );
 
     when(tableManager.getPdbTable(TABLE_NAME)).thenReturn(Optional.of(metadata));
-    when(itemDao.scan(ITEM_TABLE_NAME, 101))
+    when(itemDao.scan(eq(ITEM_TABLE_NAME), eq(101), eq(Optional.empty()), eq(Optional.empty())))
         .thenReturn(List.of(item1));
     when(attributeValueConverter.fromJson(item1.attributesJson())).thenReturn(attr1);
 
