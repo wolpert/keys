@@ -2233,4 +2233,178 @@ public class ItemOperationsTest extends BaseEndToEndTest {
       assertThat(getResponse.item().get("value").n()).isEqualTo(String.valueOf(i + 1));
     }
   }
+
+  @Test
+  void putItem_emptyStringInHashKey_throwsException() {
+    // Attempt to put item with empty string as hash key value
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("").build(),  // Empty string - not allowed in key
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "value", AttributeValue.builder().n("123").build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that empty string in hash key throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("An AttributeValue may not contain an empty string")
+        .hasMessageContaining("Key: " + HASH_KEY);
+  }
+
+  @Test
+  void putItem_emptyStringInSortKey_throwsException() {
+    // Attempt to put item with empty string as sort key value
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("").build(),  // Empty string - not allowed in key
+        "value", AttributeValue.builder().n("123").build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that empty string in sort key throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("An AttributeValue may not contain an empty string")
+        .hasMessageContaining("Key: " + SORT_KEY);
+  }
+
+  @Test
+  void putItem_emptyBinaryAttribute_throwsException() {
+    // Attempt to put item with empty binary attribute
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "data", AttributeValue.builder().b(software.amazon.awssdk.core.SdkBytes.fromByteArray(new byte[0])).build()  // Empty binary
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that empty binary attribute throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Binary attributes cannot be empty")
+        .hasMessageContaining("Attribute: data");
+  }
+
+  @Test
+  void putItem_emptyStringInStringSet_throwsException() {
+    // Attempt to put item with empty string in string set
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "tags", AttributeValue.builder().ss("tag1", "", "tag3").build()  // Empty string in set
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that empty string in string set throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("String set attributes cannot contain empty strings")
+        .hasMessageContaining("Attribute: tags");
+  }
+
+  @Test
+  void putItem_emptyBytesInBinarySet_throwsException() {
+    // Attempt to put item with empty bytes in binary set
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "binarySet", AttributeValue.builder().bs(
+            software.amazon.awssdk.core.SdkBytes.fromByteArray(new byte[]{1, 2, 3}),
+            software.amazon.awssdk.core.SdkBytes.fromByteArray(new byte[0])  // Empty bytes
+        ).build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that empty bytes in binary set throws exception
+    assertThatThrownBy(() -> client.putItem(putRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Binary set attributes cannot contain empty values")
+        .hasMessageContaining("Attribute: binarySet");
+  }
+
+  @Test
+  void updateItem_resultingInEmptyHashKey_throwsException() {
+    // First create an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "value", AttributeValue.builder().n("123").build()
+    );
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Attempt to update the hash key to an empty string
+    final UpdateItemRequest updateRequest = UpdateItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user123").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .updateExpression("SET " + HASH_KEY + " = :emptyValue")
+        .expressionAttributeValues(Map.of(
+            ":emptyValue", AttributeValue.builder().s("").build()
+        ))
+        .build();
+
+    // Verify that updating hash key to empty string throws exception
+    assertThatThrownBy(() -> client.updateItem(updateRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("An AttributeValue may not contain an empty string")
+        .hasMessageContaining("Key: " + HASH_KEY);
+  }
+
+  @Test
+  void putItem_validNonKeyEmptyString_succeeds() {
+    // DynamoDB allows empty strings in non-key attributes (though it's not best practice)
+    // Note: This is actually NOT true in real DynamoDB - empty strings are not allowed anywhere
+    // But we'll test that non-key attributes can have values
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("user123").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "description", AttributeValue.builder().s("valid description").build(),
+        "value", AttributeValue.builder().n("123").build()
+    );
+
+    final PutItemRequest putRequest = PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build();
+
+    // Verify that valid item succeeds
+    final PutItemResponse response = client.putItem(putRequest);
+    assertThat(response).isNotNull();
+
+    // Verify item was created
+    final GetItemResponse getResponse = client.getItem(GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(Map.of(
+            HASH_KEY, AttributeValue.builder().s("user123").build(),
+            SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+        ))
+        .build());
+    assertThat(getResponse.hasItem()).isTrue();
+    assertThat(getResponse.item().get("description").s()).isEqualTo("valid description");
+  }
 }
