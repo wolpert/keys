@@ -154,22 +154,72 @@ if (request.transactItems() != null && request.transactItems().size() > 25) {
 
 ---
 
-### 6. Batch Operation Limits Not Validated
-**Priority:** HIGH  
+### ✅ 6. Batch Operation Limits Validation - COMPLETED
+**Priority:** HIGH
 **File:** `PdbItemManager.java` (batchGetItem, batchWriteItem)
 
-**Problem:**  
-DynamoDB limits:
-- BatchGetItem: 100 items max
-- BatchWriteItem: 25 requests max
+**Status:** ✅ **FIXED**
+**Date Completed:** 2026-01-02
 
-No validation enforces these limits.
+**Problem:**
+DynamoDB enforces strict limits on batch operations, but Pretender wasn't validating these limits, allowing invalid operations that would fail in real DynamoDB:
+- BatchGetItem: 100 items max across all tables
+- BatchWriteItem: 25 requests max across all tables
 
-**Solution:**
-- Add validation at start of each batch method
-- Throw `ValidationException` if exceeded
+**Solution Implemented:**
+- Added validation at the start of both `batchGetItem()` and `batchWriteItem()` methods
+- Counts total items/requests across all tables in the request
+- Throws `IllegalArgumentException` when limits are exceeded
+- Error messages include actual counts for debugging
+- Updated JavaDoc to document the validation behavior
 
-**Estimated Effort:** 30 minutes
+**Code Added:**
+
+For BatchGetItem:
+```java
+// Validate batch get item count (DynamoDB limit: 100 items max across all tables)
+if (request.requestItems() != null) {
+  int totalItems = request.requestItems().values().stream()
+      .mapToInt(keysAndAttributes -> keysAndAttributes.keys() != null ? keysAndAttributes.keys().size() : 0)
+      .sum();
+  if (totalItems > 100) {
+    throw new IllegalArgumentException(
+        "BatchGetItem request cannot contain more than 100 items (received " + totalItems + " items)");
+  }
+}
+```
+
+For BatchWriteItem:
+```java
+// Validate batch write item count (DynamoDB limit: 25 requests max across all tables)
+if (request.requestItems() != null) {
+  int totalRequests = request.requestItems().values().stream()
+      .mapToInt(writeRequests -> writeRequests != null ? writeRequests.size() : 0)
+      .sum();
+  if (totalRequests > 25) {
+    throw new IllegalArgumentException(
+        "BatchWriteItem request cannot contain more than 25 requests (received " + totalRequests + " requests)");
+  }
+}
+```
+
+**Files Modified:**
+- `PdbItemManager.java` - Added validation to both batchGetItem and batchWriteItem methods
+- `ItemOperationsTest.java` - Added 4 comprehensive integration tests
+
+**Integration Tests Added:**
+1. `batchGetItem_exceedsMaxItemCount_throwsException()` - Tests 101 items throws exception
+2. `batchGetItem_exactlyMaxItemCount_succeeds()` - Tests 100 items (at limit) succeeds
+3. `batchWriteItem_exceedsMaxRequestCount_throwsException()` - Tests 26 requests throws exception
+4. `batchWriteItem_exactlyMaxRequestCount_succeeds()` - Tests 25 requests (at limit) succeeds
+
+**Behavior:**
+- ✅ BatchGetItem with 1-100 items proceeds normally
+- ✅ BatchGetItem with 101+ items throws IllegalArgumentException with descriptive message
+- ✅ BatchWriteItem with 1-25 requests proceeds normally
+- ✅ BatchWriteItem with 26+ requests throws IllegalArgumentException with descriptive message
+- ✅ Behavior now matches real DynamoDB validation
+- ✅ Tests will catch attempts to exceed limits before deployment
 
 ---
 
@@ -546,25 +596,25 @@ May be missing indexes or using inefficient queries.
 ## Summary
 
 **Total identified items:** 25
-**Completed items:** 4
+**Completed items:** 5
 
 **By Priority:**
 - 🔴 Critical: 0 remaining (2 completed ✅)
-- 🟠 High: 5 remaining (2 completed ✅)
+- 🟠 High: 4 remaining (3 completed ✅)
 - 🟡 Medium: 8 remaining
 - 🟢 Low: 8 remaining
 
-**Completed Tasks (2026-01-01):**
-1. ✅ Transaction Atomicity - Wrapped transactWriteItems in jdbi.inTransaction() for true atomicity
-2. ✅ Batch Write Error Handling - Added unprocessed items tracking and return
-3. ✅ Query Pagination - Implemented ExclusiveStartKey support for multi-page query results
-4. ✅ Transaction Item Count Validation - Added 25-item limit validation to transactGetItems and transactWriteItems
+**Completed Tasks:**
+1. ✅ Transaction Atomicity (2026-01-01) - Wrapped transactWriteItems in jdbi.inTransaction() for true atomicity
+2. ✅ Batch Write Error Handling (2026-01-01) - Added unprocessed items tracking and return
+3. ✅ Query Pagination (2026-01-01) - Implemented ExclusiveStartKey support for multi-page query results
+4. ✅ Transaction Item Count Validation (2026-01-01) - Added 25-item limit validation to transactGetItems and transactWriteItems
+5. ✅ Batch Operation Limits Validation (2026-01-02) - Added validation for BatchGetItem (100 items max) and BatchWriteItem (25 requests max)
 
 **Recommended Next Steps:**
 
 1. **Short-term (High Priority):**
    - Implement scan pagination with ExclusiveStartKey
-   - Add validation for batch operation limits (100 items for BatchGetItem, 25 for BatchWriteItem)
    - Implement item size validation (400KB limit)
 
 2. **Medium-term (Medium Priority):**
@@ -582,10 +632,10 @@ May be missing indexes or using inefficient queries.
 ---
 
 **Estimated Remaining Effort:**
-- High Priority: 10-17 hours
+- High Priority: 9-16 hours
 - Medium: 32-48 hours
 - Low: 100+ hours
 
-**Total Effort Spent:** ~11-13 hours (Critical issues + Query pagination + Transaction validation)
+**Total Effort Spent:** ~12-14 hours (Critical issues + Query pagination + Transaction validation + Batch operation limits)
 
 **Note:** These estimates assume familiarity with the codebase and may vary based on testing requirements and code review time.
