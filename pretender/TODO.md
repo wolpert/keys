@@ -349,23 +349,84 @@ TransactGetItems passes `projectionExpression` to getItem, but need to verify th
 
 ---
 
-### 13. Missing NULL and Empty String Validation
-**Priority:** MEDIUM  
+### ✅ 13. NULL and Empty String Validation - COMPLETED
+**Priority:** MEDIUM
 **File:** `PdbItemManager.java` (putItem, updateItem)
 
-**Problem:**  
-DynamoDB has special rules:
-- Empty strings are not allowed in key attributes
-- NULL attribute values must use NULL type, not absent
-- Binary attributes cannot be empty
+**Status:** ✅ **FIXED**
+**Date Completed:** 2026-01-02
 
-Pretender may not validate these correctly.
+**Problem:**
+DynamoDB has special validation rules that Pretender wasn't enforcing:
+- Empty strings are not allowed in key attributes (hash key and sort key)
+- Binary attributes cannot be empty (neither single values nor sets)
+- String sets cannot contain empty strings
 
-**Solution:**
-- Add validation in `ItemConverter` or `PdbItemManager`
-- Throw `ValidationException` for invalid values
+Without this validation, invalid items could be stored that would fail in real DynamoDB.
 
-**Estimated Effort:** 2-3 hours
+**Solution Implemented:**
+- Created `validateItemAttributes()` method in `PdbItemManager`
+- Validates all DynamoDB attribute constraints before item storage
+- Called from both `putItem()` (before insert) and `updateItem()` (after applying update expression)
+- Throws `IllegalArgumentException` with descriptive messages matching DynamoDB error format
+- Updated JavaDoc to document validation exceptions
+
+**Validations Added:**
+1. **Hash key validation**: Ensures hash key string values are not empty
+2. **Sort key validation**: Ensures sort key string values are not empty (if table has sort key)
+3. **Binary validation**: Ensures binary attributes are not empty byte arrays
+4. **Binary set validation**: Ensures binary sets don't contain empty byte arrays
+5. **String set validation**: Ensures string sets don't contain empty strings
+
+**Code Added:**
+```java
+private void validateItemAttributes(final Map<String, AttributeValue> item, final PdbMetadata metadata) {
+  // Validate hash key is not empty string
+  final AttributeValue hashKeyAttr = item.get(metadata.hashKey());
+  if (hashKeyAttr != null && hashKeyAttr.s() != null && hashKeyAttr.s().isEmpty()) {
+    throw new IllegalArgumentException(
+        "One or more parameter values were invalid: An AttributeValue may not contain an empty string. " +
+        "Key: " + metadata.hashKey());
+  }
+
+  // Validate sort key is not empty string (if table has sort key)
+  if (metadata.sortKey().isPresent()) {
+    final AttributeValue sortKeyAttr = item.get(metadata.sortKey().get());
+    if (sortKeyAttr != null && sortKeyAttr.s() != null && sortKeyAttr.s().isEmpty()) {
+      throw new IllegalArgumentException(
+          "One or more parameter values were invalid: An AttributeValue may not contain an empty string. " +
+          "Key: " + metadata.sortKey().get());
+    }
+  }
+
+  // Validate binary attributes, binary sets, and string sets
+  // (full implementation in PdbItemManager.java:1266-1318)
+}
+```
+
+**Files Modified:**
+- `PdbItemManager.java` - Added validateItemAttributes method and calls from putItem/updateItem
+- `ItemOperationsTest.java` - Added 7 comprehensive integration tests
+
+**Integration Tests Added:**
+1. `putItem_emptyStringInHashKey_throwsException()` - Tests empty hash key throws exception
+2. `putItem_emptyStringInSortKey_throwsException()` - Tests empty sort key throws exception
+3. `putItem_emptyBinaryAttribute_throwsException()` - Tests empty binary throws exception
+4. `putItem_emptyStringInStringSet_throwsException()` - Tests empty string in set throws exception
+5. `putItem_emptyBytesInBinarySet_throwsException()` - Tests empty bytes in set throws exception
+6. `updateItem_resultingInEmptyHashKey_throwsException()` - Tests update creating empty key throws exception
+7. `putItem_validNonKeyEmptyString_succeeds()` - Regression test for valid items
+
+**Behavior:**
+- ✅ Empty strings in key attributes are rejected with clear error messages
+- ✅ Empty binary attributes are rejected
+- ✅ Empty values in sets (string sets and binary sets) are rejected
+- ✅ Validation applies to both putItem and updateItem operations
+- ✅ Error messages match DynamoDB format: "One or more parameter values were invalid"
+- ✅ Behavior now matches real DynamoDB validation
+- ✅ Tests ensure invalid data is caught before database storage
+
+**Note:** NULL attribute validation (ensuring NULL type is used instead of absent attributes) is handled naturally by the AWS SDK's AttributeValue structure and doesn't require additional validation.
 
 ---
 
@@ -596,12 +657,12 @@ May be missing indexes or using inefficient queries.
 ## Summary
 
 **Total identified items:** 25
-**Completed items:** 5
+**Completed items:** 6
 
 **By Priority:**
 - 🔴 Critical: 0 remaining (2 completed ✅)
 - 🟠 High: 4 remaining (3 completed ✅)
-- 🟡 Medium: 8 remaining
+- 🟡 Medium: 7 remaining (1 completed ✅)
 - 🟢 Low: 8 remaining
 
 **Completed Tasks:**
@@ -610,6 +671,7 @@ May be missing indexes or using inefficient queries.
 3. ✅ Query Pagination (2026-01-01) - Implemented ExclusiveStartKey support for multi-page query results
 4. ✅ Transaction Item Count Validation (2026-01-01) - Added 25-item limit validation to transactGetItems and transactWriteItems
 5. ✅ Batch Operation Limits Validation (2026-01-02) - Added validation for BatchGetItem (100 items max) and BatchWriteItem (25 requests max)
+6. ✅ NULL and Empty String Validation (2026-01-02) - Added validation for empty strings in keys, empty binary, and empty values in sets
 
 **Recommended Next Steps:**
 
@@ -633,9 +695,9 @@ May be missing indexes or using inefficient queries.
 
 **Estimated Remaining Effort:**
 - High Priority: 9-16 hours
-- Medium: 32-48 hours
+- Medium: 29-45 hours
 - Low: 100+ hours
 
-**Total Effort Spent:** ~12-14 hours (Critical issues + Query pagination + Transaction validation + Batch operation limits)
+**Total Effort Spent:** ~15-17 hours (Critical issues + Query pagination + Transaction validation + Batch operation limits + NULL/empty string validation)
 
 **Note:** These estimates assume familiarity with the codebase and may vary based on testing requirements and code review time.

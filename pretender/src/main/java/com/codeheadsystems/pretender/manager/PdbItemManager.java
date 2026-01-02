@@ -97,12 +97,16 @@ public class PdbItemManager {
    *
    * @param request the request
    * @return the response
+   * @throws IllegalArgumentException if key attributes contain empty strings or binary attributes are empty
    */
   public PutItemResponse putItem(final PutItemRequest request) {
     log.trace("putItem({})", request);
 
     final String tableName = request.tableName();
     final PdbMetadata metadata = getTableMetadata(tableName);
+
+    // Validate item attributes (empty strings in keys, empty binary, etc.)
+    validateItemAttributes(request.item(), metadata);
 
     // Extract key values
     final String hashKeyValue = attributeValueConverter.extractKeyValue(request.item(), metadata.hashKey());
@@ -217,6 +221,7 @@ public class PdbItemManager {
    *
    * @param request the request
    * @return the response
+   * @throws IllegalArgumentException if updated attributes contain empty strings in keys or empty binary attributes
    */
   public UpdateItemResponse updateItem(final UpdateItemRequest request) {
     log.trace("updateItem({})", request);
@@ -248,6 +253,9 @@ public class PdbItemManager {
         request.updateExpression(),
         request.expressionAttributeValues(),
         request.expressionAttributeNames());
+
+    // Validate updated attributes (empty strings in keys, empty binary, etc.)
+    validateItemAttributes(updatedAttributes, metadata);
 
     // Capture stream event BEFORE actual write
     if (existingPdbItem.isPresent()) {
@@ -1252,6 +1260,67 @@ public class PdbItemManager {
         throw ConditionalCheckFailedException.builder()
             .message("Condition check failed")
             .build();
+      }
+    }
+  }
+
+  /**
+   * Validates item attributes according to DynamoDB rules.
+   *
+   * @param item the item to validate
+   * @param metadata the table metadata (for key attribute names)
+   * @throws IllegalArgumentException if validation fails
+   */
+  private void validateItemAttributes(final Map<String, AttributeValue> item, final PdbMetadata metadata) {
+    // Validate hash key is not empty string
+    final AttributeValue hashKeyAttr = item.get(metadata.hashKey());
+    if (hashKeyAttr != null && hashKeyAttr.s() != null && hashKeyAttr.s().isEmpty()) {
+      throw new IllegalArgumentException(
+          "One or more parameter values were invalid: An AttributeValue may not contain an empty string. " +
+          "Key: " + metadata.hashKey());
+    }
+
+    // Validate sort key is not empty string (if table has sort key)
+    if (metadata.sortKey().isPresent()) {
+      final AttributeValue sortKeyAttr = item.get(metadata.sortKey().get());
+      if (sortKeyAttr != null && sortKeyAttr.s() != null && sortKeyAttr.s().isEmpty()) {
+        throw new IllegalArgumentException(
+            "One or more parameter values were invalid: An AttributeValue may not contain an empty string. " +
+            "Key: " + metadata.sortKey().get());
+      }
+    }
+
+    // Validate no binary attributes are empty
+    for (Map.Entry<String, AttributeValue> entry : item.entrySet()) {
+      final AttributeValue attrValue = entry.getValue();
+
+      // Check binary attribute
+      if (attrValue.b() != null && attrValue.b().asByteArray().length == 0) {
+        throw new IllegalArgumentException(
+            "One or more parameter values were invalid: Binary attributes cannot be empty. " +
+            "Attribute: " + entry.getKey());
+      }
+
+      // Check binary set attribute
+      if (attrValue.bs() != null) {
+        for (software.amazon.awssdk.core.SdkBytes bytes : attrValue.bs()) {
+          if (bytes.asByteArray().length == 0) {
+            throw new IllegalArgumentException(
+                "One or more parameter values were invalid: Binary set attributes cannot contain empty values. " +
+                "Attribute: " + entry.getKey());
+          }
+        }
+      }
+
+      // Check string set - DynamoDB doesn't allow empty strings in string sets either
+      if (attrValue.ss() != null) {
+        for (String str : attrValue.ss()) {
+          if (str.isEmpty()) {
+            throw new IllegalArgumentException(
+                "One or more parameter values were invalid: String set attributes cannot contain empty strings. " +
+                "Attribute: " + entry.getKey());
+          }
+        }
       }
     }
   }
