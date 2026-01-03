@@ -3,6 +3,9 @@ package com.codeheadsystems.pretender.dagger;
 import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
 import com.codeheadsystems.pretender.dao.PdbMetadataDao;
+import com.codeheadsystems.pretender.encryption.EncryptionService;
+import com.codeheadsystems.pretender.encryption.NoOpEncryptionService;
+import com.codeheadsystems.pretender.model.EncryptionConfig;
 import com.codeheadsystems.pretender.model.PdbGlobalSecondaryIndex;
 import com.codeheadsystems.pretender.model.PdbItem;
 import com.codeheadsystems.pretender.model.PdbMetadata;
@@ -65,7 +68,8 @@ public class PretenderModule {
   @Singleton
   @Named(JdbiFactory.IMMUTABLES)
   public Set<Class<?>> immutableClasses() {
-    return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class, PdbStreamRecord.class);
+    return Set.of(PdbMetadata.class, PdbItem.class, PdbGlobalSecondaryIndex.class, PdbStreamRecord.class,
+        EncryptionConfig.class);
   }
 
   /**
@@ -97,6 +101,19 @@ public class PretenderModule {
   @Singleton
   public PdbMetadataDao metadataDao(final Jdbi jdbi) {
     return jdbi.onDemand(PdbMetadataDao.class);
+  }
+
+  /**
+   * Provides the encryption service for attribute-level encryption.
+   * By default, returns a no-op implementation that performs no encryption.
+   * Override this provider in a submodule to enable encryption.
+   *
+   * @return the encryption service
+   */
+  @Provides
+  @Singleton
+  public EncryptionService encryptionService() {
+    return new NoOpEncryptionService();
   }
 
   /**

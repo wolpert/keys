@@ -74,4 +74,11 @@ public interface PretenderComponent {
    * @return the pdb stream table manager
    */
   com.codeheadsystems.pretender.manager.PdbStreamTableManager pdbStreamTableManager();
+
+  /**
+   * Attribute encryption helper (for testing and configuration).
+   *
+   * @return the attribute encryption helper
+   */
+  com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper();
 }
