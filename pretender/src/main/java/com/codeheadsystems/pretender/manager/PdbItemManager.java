@@ -43,6 +43,7 @@ public class PdbItemManager {
   private final GsiProjectionHelper gsiProjectionHelper;
   private final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   private final com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper;
+  private final com.codeheadsystems.pretender.util.CapacityCalculator capacityCalculator;
   private final Clock clock;
   private final org.jdbi.v3.core.Jdbi jdbi;
 
@@ -75,12 +76,13 @@ public class PdbItemManager {
                         final GsiProjectionHelper gsiProjectionHelper,
                         final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper,
                         final com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper,
+                        final com.codeheadsystems.pretender.util.CapacityCalculator capacityCalculator,
                         final Clock clock,
                         final org.jdbi.v3.core.Jdbi jdbi) {
-    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         tableManager, itemTableManager, itemDao, itemConverter, attributeValueConverter,
         conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper,
-        streamCaptureHelper, encryptionHelper, clock, jdbi);
+        streamCaptureHelper, encryptionHelper, capacityCalculator, clock, jdbi);
     this.tableManager = tableManager;
     this.itemTableManager = itemTableManager;
     this.itemDao = itemDao;
@@ -92,6 +94,7 @@ public class PdbItemManager {
     this.gsiProjectionHelper = gsiProjectionHelper;
     this.streamCaptureHelper = streamCaptureHelper;
     this.encryptionHelper = encryptionHelper;
+    this.capacityCalculator = capacityCalculator;
     this.clock = clock;
     this.jdbi = jdbi;
   }
@@ -177,10 +180,16 @@ public class PdbItemManager {
   }
 
   /**
-   * Get item.
+   * Get item from table.
    *
-   * @param request the request
-   * @return the response
+   * <p><strong>Consistent Reads:</strong> All reads in Pretender are strongly consistent
+   * by default due to SQL database ACID guarantees. The {@code ConsistentRead} parameter
+   * is accepted for API compatibility but has no effect - reads always reflect the most
+   * recent successful write operations.</p>
+   *
+   * @param request the get item request (ConsistentRead parameter is accepted but ignored)
+   * @return the get item response containing the item if found, or empty item map if not found
+   * @throws ResourceNotFoundException if the table does not exist
    */
   public GetItemResponse getItem(final GetItemRequest request) {
     log.trace("getItem({})", request);
@@ -224,9 +233,18 @@ public class PdbItemManager {
       item = itemConverter.applyProjection(item, request.projectionExpression());
     }
 
-    return GetItemResponse.builder()
-        .item(item)
-        .build();
+    // Build response with optional consumed capacity
+    final GetItemResponse.Builder responseBuilder = GetItemResponse.builder().item(item);
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+          capacityCalculator.calculateReadCapacity(tableName, item);
+      responseBuilder.consumedCapacity(consumedCapacity);
+    }
+
+    return responseBuilder.build();
   }
 
   /**
@@ -384,10 +402,17 @@ public class PdbItemManager {
   }
 
   /**
-   * Query items.
+   * Query items in a table using KeyConditionExpression.
    *
-   * @param request the request
-   * @return the response
+   * <p><strong>Consistent Reads:</strong> All reads in Pretender are strongly consistent
+   * by default due to SQL database ACID guarantees. The {@code ConsistentRead} parameter
+   * is accepted for API compatibility but has no effect - reads always reflect the most
+   * recent successful write operations.</p>
+   *
+   * @param request the query request (ConsistentRead parameter is accepted but ignored)
+   * @return the query response containing matching items and optional LastEvaluatedKey for pagination
+   * @throws ResourceNotFoundException if the table or index does not exist
+   * @throws IllegalArgumentException if the KeyConditionExpression is invalid
    */
   public QueryResponse query(final QueryRequest request) {
     log.trace("query({})", request);
@@ -636,6 +661,9 @@ public class PdbItemManager {
       return;
     }
 
+    // Collect all GSI items to insert in batch
+    final Map<String, List<PdbItem>> gsiItemsByTable = new HashMap<>();
+
     for (PdbGlobalSecondaryIndex gsi : metadata.globalSecondaryIndexes()) {
       // Check if item has GSI keys
       if (!gsiProjectionHelper.hasGsiKeys(itemAttrs, gsi)) {
@@ -664,8 +692,9 @@ public class PdbItemManager {
       final String projectedJson = attributeValueConverter.toJson(projectedAttrs);
 
       // Create PdbItem for GSI table
+      final String gsiTableName = itemTableManager.getGsiTableName(metadata.name(), gsi.indexName());
       final PdbItem gsiItem = com.codeheadsystems.pretender.model.ImmutablePdbItem.builder()
-          .tableName(itemTableManager.getGsiTableName(metadata.name(), gsi.indexName()))
+          .tableName(gsiTableName)
           .hashKeyValue(gsiHashKeyValue)
           .sortKeyValue(compositeSortKey)  // Always non-null for GSI tables
           .attributesJson(projectedJson)
@@ -673,11 +702,16 @@ public class PdbItemManager {
           .updateDate(pdbItem.updateDate())
           .build();
 
-      // Insert or replace in GSI table
-      final String gsiTableName = itemTableManager.getGsiTableName(metadata.name(), gsi.indexName());
-      itemDao.insert(gsiTableName, gsiItem);
+      // Group items by GSI table for batch insertion
+      gsiItemsByTable.computeIfAbsent(gsiTableName, k -> new ArrayList<>()).add(gsiItem);
+    }
 
-      log.trace("Maintained GSI table {} for item", gsiTableName);
+    // Batch insert all GSI items per table
+    for (Map.Entry<String, List<PdbItem>> entry : gsiItemsByTable.entrySet()) {
+      final String gsiTableName = entry.getKey();
+      final List<PdbItem> items = entry.getValue();
+      itemDao.batchInsert(gsiTableName, items);
+      log.trace("Batch maintained {} items in GSI table {}", items.size(), gsiTableName);
     }
   }
 
@@ -786,9 +820,15 @@ public class PdbItemManager {
   /**
    * Batch get items from one or more tables.
    *
-   * @param request the batch get item request
-   * @return the batch get item response
-   * @throws IllegalArgumentException if the request contains more than 100 items
+   * <p><strong>Consistent Reads:</strong> All reads in Pretender are strongly consistent
+   * by default due to SQL database ACID guarantees. The {@code ConsistentRead} parameter
+   * in {@code KeysAndAttributes} is accepted for API compatibility but has no effect -
+   * reads always reflect the most recent successful write operations.</p>
+   *
+   * @param request the batch get item request (ConsistentRead parameter is accepted but ignored)
+   * @return the batch get item response containing requested items from all tables
+   * @throws IllegalArgumentException if the request contains more than 100 items across all tables
+   * @throws ResourceNotFoundException if any requested table does not exist
    */
   public BatchGetItemResponse batchGetItem(final BatchGetItemRequest request) {
     log.trace("batchGetItem({})", request);
@@ -810,24 +850,42 @@ public class PdbItemManager {
     for (Map.Entry<String, KeysAndAttributes> entry : request.requestItems().entrySet()) {
       final String tableName = entry.getKey();
       final KeysAndAttributes keysAndAttributes = entry.getValue();
-      final List<Map<String, AttributeValue>> items = new ArrayList<>();
 
       // Verify table exists
       final PdbMetadata metadata = getTableMetadata(tableName);
 
-      // Get each item
+      // Convert keys to KeyPair format for batch retrieval
+      final List<PdbItemDao.KeyPair> keyPairs = new ArrayList<>();
       for (Map<String, AttributeValue> key : keysAndAttributes.keys()) {
-        final GetItemRequest getRequest = GetItemRequest.builder()
-            .tableName(tableName)
-            .key(key)
-            .projectionExpression(keysAndAttributes.projectionExpression())
-            .expressionAttributeNames(keysAndAttributes.expressionAttributeNames())
-            .build();
+        final String hashKeyValue = attributeValueConverter.extractKeyValue(key, metadata.hashKey());
+        final Optional<String> sortKeyValue = metadata.sortKey().map(sk ->
+            attributeValueConverter.extractKeyValue(key, sk));
+        keyPairs.add(new PdbItemDao.KeyPair(hashKeyValue, sortKeyValue));
+      }
 
-        final GetItemResponse getResponse = getItem(getRequest);
-        if (getResponse.hasItem() && !getResponse.item().isEmpty()) {
-          items.add(getResponse.item());
+      // Batch get all items in a single query
+      final List<PdbItem> pdbItems = itemDao.batchGet(itemTableName(tableName), keyPairs);
+
+      // Convert to AttributeValue maps
+      final List<Map<String, AttributeValue>> items = new ArrayList<>();
+      for (PdbItem pdbItem : pdbItems) {
+        Map<String, AttributeValue> itemAttrs = attributeValueConverter.fromJson(pdbItem.attributesJson());
+
+        // Decrypt encrypted attributes
+        itemAttrs = encryptionHelper.decryptAttributes(itemAttrs, metadata);
+
+        // Check TTL expiration
+        if (isExpired(metadata, itemAttrs)) {
+          log.debug("Skipping expired item in batch get");
+          continue;
         }
+
+        // Apply projection if present
+        if (keysAndAttributes.projectionExpression() != null && !keysAndAttributes.projectionExpression().isBlank()) {
+          itemAttrs = itemConverter.applyProjection(itemAttrs, keysAndAttributes.projectionExpression());
+        }
+
+        items.add(itemAttrs);
       }
 
       if (!items.isEmpty()) {

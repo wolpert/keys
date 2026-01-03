@@ -119,6 +119,82 @@ public class ItemOperationsTest extends BaseEndToEndTest {
   }
 
   @Test
+  void getItem_withReturnConsumedCapacity_returnsCapacityUnits() {
+    // Put an item with known size
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("capacity-test-user").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "name", AttributeValue.builder().s("Capacity Test User").build(),
+        "description", AttributeValue.builder().s("This is a test item for capacity calculation").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Get item with ReturnConsumedCapacity=TOTAL
+    final Map<String, AttributeValue> key = Map.of(
+        HASH_KEY, AttributeValue.builder().s("capacity-test-user").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+    );
+
+    final GetItemRequest getRequest = GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(key)
+        .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+        .build();
+
+    final GetItemResponse getResponse = client.getItem(getRequest);
+
+    // Verify item was retrieved
+    assertThat(getResponse.hasItem()).isTrue();
+    assertThat(getResponse.item()).hasSize(4);
+
+    // Verify consumed capacity was returned
+    assertThat(getResponse.consumedCapacity()).isNotNull();
+    assertThat(getResponse.consumedCapacity().tableName()).isEqualTo(TABLE_NAME);
+    assertThat(getResponse.consumedCapacity().capacityUnits()).isGreaterThan(0.0);
+    assertThat(getResponse.consumedCapacity().readCapacityUnits()).isGreaterThan(0.0);
+    // For a small item (<4KB), should be exactly 1 RCU
+    assertThat(getResponse.consumedCapacity().capacityUnits()).isEqualTo(1.0);
+  }
+
+  @Test
+  void getItem_withoutReturnConsumedCapacity_doesNotReturnCapacity() {
+    // Put an item
+    final Map<String, AttributeValue> item = Map.of(
+        HASH_KEY, AttributeValue.builder().s("no-capacity-user").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build(),
+        "data", AttributeValue.builder().s("test").build()
+    );
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(item)
+        .build());
+
+    // Get item without ReturnConsumedCapacity (defaults to NONE)
+    final Map<String, AttributeValue> key = Map.of(
+        HASH_KEY, AttributeValue.builder().s("no-capacity-user").build(),
+        SORT_KEY, AttributeValue.builder().s("2024-01-01T00:00:00Z").build()
+    );
+
+    final GetItemRequest getRequest = GetItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .key(key)
+        .build();
+
+    final GetItemResponse getResponse = client.getItem(getRequest);
+
+    // Verify item was retrieved
+    assertThat(getResponse.hasItem()).isTrue();
+
+    // Verify NO consumed capacity was returned
+    assertThat(getResponse.consumedCapacity()).isNull();
+  }
+
+  @Test
   void getItem_notFound() {
     final Map<String, AttributeValue> key = Map.of(
         HASH_KEY, AttributeValue.builder().s("nonexistent").build(),
@@ -1177,6 +1253,87 @@ public class ItemOperationsTest extends BaseEndToEndTest {
     assertThat(response.responses()).hasSize(2);
     assertThat(response.responses().get(0).item().get("data").s()).isEqualTo("first item");
     assertThat(response.responses().get(1).item().get("data").s()).isEqualTo("second item");
+  }
+
+  @Test
+  void transactGetItems_withProjection_returnsOnlyProjectedAttributes() {
+    // Put test items with multiple attributes
+    final String hashKey1 = "user-proj-1";
+    final String hashKey2 = "user-proj-2";
+    final String sortKey1 = "2024-01-01";
+    final String sortKey2 = "2024-01-02";
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+            SORT_KEY, AttributeValue.builder().s(sortKey1).build(),
+            "name", AttributeValue.builder().s("Alice").build(),
+            "email", AttributeValue.builder().s("alice@example.com").build(),
+            "age", AttributeValue.builder().n("25").build(),
+            "city", AttributeValue.builder().s("New York").build()
+        ))
+        .build());
+
+    client.putItem(PutItemRequest.builder()
+        .tableName(TABLE_NAME)
+        .item(Map.of(
+            HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+            SORT_KEY, AttributeValue.builder().s(sortKey2).build(),
+            "name", AttributeValue.builder().s("Bob").build(),
+            "email", AttributeValue.builder().s("bob@example.com").build(),
+            "age", AttributeValue.builder().n("30").build(),
+            "city", AttributeValue.builder().s("San Francisco").build()
+        ))
+        .build());
+
+    // Execute transactGetItems with projection (only name and email)
+    final software.amazon.awssdk.services.dynamodb.model.TransactGetItemsResponse response =
+        client.transactGetItems(software.amazon.awssdk.services.dynamodb.model.TransactGetItemsRequest.builder()
+            .transactItems(
+                software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+                    .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey1).build(),
+                            SORT_KEY, AttributeValue.builder().s(sortKey1).build()
+                        ))
+                        .projectionExpression("name, email")
+                        .build())
+                    .build(),
+                software.amazon.awssdk.services.dynamodb.model.TransactGetItem.builder()
+                    .get(software.amazon.awssdk.services.dynamodb.model.Get.builder()
+                        .tableName(TABLE_NAME)
+                        .key(Map.of(
+                            HASH_KEY, AttributeValue.builder().s(hashKey2).build(),
+                            SORT_KEY, AttributeValue.builder().s(sortKey2).build()
+                        ))
+                        .projectionExpression("name, email")
+                        .build())
+                    .build()
+            )
+            .build());
+
+    // Verify both items were retrieved with only projected attributes
+    assertThat(response.responses()).hasSize(2);
+
+    // First item - should have name and email, but NOT age or city
+    final Map<String, AttributeValue> item1 = response.responses().get(0).item();
+    assertThat(item1).containsKey("name");
+    assertThat(item1).containsKey("email");
+    assertThat(item1.get("name").s()).isEqualTo("Alice");
+    assertThat(item1.get("email").s()).isEqualTo("alice@example.com");
+    assertThat(item1).doesNotContainKey("age");
+    assertThat(item1).doesNotContainKey("city");
+
+    // Second item - should have name and email, but NOT age or city
+    final Map<String, AttributeValue> item2 = response.responses().get(1).item();
+    assertThat(item2).containsKey("name");
+    assertThat(item2).containsKey("email");
+    assertThat(item2.get("name").s()).isEqualTo("Bob");
+    assertThat(item2.get("email").s()).isEqualTo("bob@example.com");
+    assertThat(item2).doesNotContainKey("age");
+    assertThat(item2).doesNotContainKey("city");
   }
 
   @Test
