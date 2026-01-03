@@ -432,8 +432,10 @@ public class PdbItemDao {
   /**
    * Scans all items in a table.
    *
-   * @param tableName the table name
-   * @param limit     the maximum number of items to return
+   * @param tableName             the table name
+   * @param limit                 the maximum number of items to return
+   * @param exclusiveStartHashKey the exclusive start hash key
+   * @param exclusiveStartSortKey the exclusive start sort key
    * @return the list of items
    */
   public List<PdbItem> scan(final String tableName, final int limit,
@@ -492,7 +494,7 @@ public class PdbItemDao {
    * Scan all items in a table (backward-compatible overload without pagination).
    *
    * @param tableName the table name
-   * @param limit the maximum number of items to return
+   * @param limit     the maximum number of items to return
    * @return the list of items
    */
   public List<PdbItem> scan(final String tableName, final int limit) {

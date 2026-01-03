@@ -251,7 +251,7 @@ public class KeyConditionExpressionParser {
    * @param sortKeyCondition SQL WHERE clause fragment for sort key
    * @param sortKeyValue     Value to bind to :sortKey
    */
-    public record ParsedKeyCondition(String hashKeyValue, String sortKeyCondition, Optional<String> sortKeyValue) {
+  public record ParsedKeyCondition(String hashKeyValue, String sortKeyCondition, Optional<String> sortKeyValue) {
     /**
      * Instantiates a new Parsed key condition.
      *
@@ -262,32 +262,32 @@ public class KeyConditionExpressionParser {
     public ParsedKeyCondition {
     }
 
-      /**
-       * Gets hash key value.
-       *
-       * @return the hash key value
-       */
-      @Override
+    /**
+     * Gets hash key value.
+     *
+     * @return the hash key value
+     */
+    @Override
       public String hashKeyValue() {
         return hashKeyValue;
       }
 
-      /**
-       * Gets sort key condition (SQL WHERE clause fragment).
-       *
-       * @return the sort key condition
-       */
-      @Override
+    /**
+     * Gets sort key condition (SQL WHERE clause fragment).
+     *
+     * @return the sort key condition
+     */
+    @Override
       public String sortKeyCondition() {
         return sortKeyCondition;
       }
 
-      /**
-       * Gets sort key value to bind to the SQL parameter.
-       *
-       * @return the sort key value
-       */
-      @Override
+    /**
+     * Gets sort key value to bind to the SQL parameter.
+     *
+     * @return the sort key value
+     */
+    @Override
       public Optional<String> sortKeyValue() {
         return sortKeyValue;
       }

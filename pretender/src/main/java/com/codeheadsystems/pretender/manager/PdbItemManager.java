@@ -61,6 +61,7 @@ public class PdbItemManager {
    * @param gsiProjectionHelper          the GSI projection helper
    * @param streamCaptureHelper          the stream capture helper
    * @param encryptionHelper             the encryption helper
+   * @param capacityCalculator           the capacity calculator
    * @param clock                        the clock
    * @param jdbi                         the jdbi instance
    */
@@ -441,7 +442,7 @@ public class PdbItemManager {
    * @param request the query request (ConsistentRead parameter is accepted but ignored)
    * @return the query response containing matching items and optional LastEvaluatedKey for pagination
    * @throws ResourceNotFoundException if the table or index does not exist
-   * @throws IllegalArgumentException if the KeyConditionExpression is invalid
+   * @throws IllegalArgumentException  if the KeyConditionExpression is invalid
    */
   public QueryResponse query(final QueryRequest request) {
     log.trace("query({})", request);
@@ -894,7 +895,7 @@ public class PdbItemManager {
    *
    * @param request the batch get item request (ConsistentRead parameter is accepted but ignored)
    * @return the batch get item response containing requested items from all tables
-   * @throws IllegalArgumentException if the request contains more than 100 items across all tables
+   * @throws IllegalArgumentException  if the request contains more than 100 items across all tables
    * @throws ResourceNotFoundException if any requested table does not exist
    */
   public BatchGetItemResponse batchGetItem(final BatchGetItemRequest request) {
@@ -1116,7 +1117,7 @@ public class PdbItemManager {
    * @param request the transact get items request
    * @return the transact get items response with all retrieved items
    * @throws TransactionCanceledException if any get operation fails or table doesn't exist
-   * @throws IllegalArgumentException if the request contains more than 25 items
+   * @throws IllegalArgumentException     if the request contains more than 25 items
    */
   public TransactGetItemsResponse transactGetItems(final TransactGetItemsRequest request) {
     log.trace("transactGetItems({})", request);
@@ -1225,7 +1226,7 @@ public class PdbItemManager {
    * @param request the transact write items request
    * @return the transact write items response (empty on success)
    * @throws TransactionCanceledException if any write operation fails or condition check fails
-   * @throws IllegalArgumentException if the request contains more than 25 items
+   * @throws IllegalArgumentException     if the request contains more than 25 items
    */
   public TransactWriteItemsResponse transactWriteItems(final TransactWriteItemsRequest request) {
     log.trace("transactWriteItems({})", request);
