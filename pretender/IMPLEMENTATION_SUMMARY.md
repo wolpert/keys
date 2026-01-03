@@ -780,6 +780,170 @@ This is acceptable for development/testing but differs from production DynamoDB 
 
 ---
 
+## References and Architectural Rationale
+
+This section provides references to official documentation and technical resources that informed Pretender's design decisions, along with clear identification of novel approaches developed specifically for this implementation.
+
+### AWS DynamoDB Streams - Official Documentation
+
+Understanding how real DynamoDB Streams work was essential for designing a compatible implementation:
+
+**Core Concepts:**
+- [Change data capture for DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html) - Official AWS documentation explaining how streams capture INSERT, MODIFY, and REMOVE events
+- [Shard API Reference](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_Shard.html) - Official shard data structure and fields
+- [DescribeStream API](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_DescribeStream.html) - API for discovering stream shards
+
+**Key Findings from AWS Documentation:**
+
+> "A stream consists of stream records, where each stream record represents a single data modification in the DynamoDB table to which the stream belongs. Stream records are organized into groups, or shards."
+
+> "A shard is either open (new stream records can be added) or closed (no stream records can be added), where a closed stream shard is defined as a shard with an EndingSequenceNumber, whereas an open stream shard has no EndingSequenceNumber."
+
+> "Because shards have a lineage (parent and children), an application must always process a parent shard before it processes a child shard to help ensure that the stream records are also processed in the correct order."
+
+**Shard Splitting and Parent-Child Relationships:**
+- [Shards, Streams, and Scale](https://medium.com/@mihankhahp/shards-streams-and-scale-dynamodbs-blueprint-for-real-time-success-255d880f7b7b) - Technical deep dive into shard splitting behavior
+- [DynamoDB Streams Deep Dive](https://medium.com/@joudwawad/dynamodb-streams-deep-dive-da64c2e5aa84) - Explains when and why shards split
+
+Key insight: Shards split automatically when the underlying table partition increases due to growing data volume or higher throughput demands. When a partition splits, the corresponding stream shard also splits, creating new child shards while marking the parent shard as read-only.
+
+### DynamoDB Partitioning and Sharding
+
+Pretender's hybrid storage model was influenced by understanding DynamoDB's internal partitioning:
+
+**Official AWS Documentation:**
+- [Partitions and Data Distribution](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.Partitions.html) - How DynamoDB uses hash functions to distribute data across partitions
+- [Best practices for partition key design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html) - Guidelines for choosing partition keys
+- [Write sharding best practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html) - Techniques for distributing writes
+
+**Key Concept from AWS:**
+
+> "To write an item to the table, DynamoDB uses the value of the partition key as input to an internal hash function, and the output value from the hash function determines the partition in which the item will be stored."
+
+> "Every partition in a DynamoDB table is designed to deliver a maximum capacity of 3,000 read units per second and 1,000 write units per second."
+
+**How This Informed Pretender:**
+- Pretender stores `hash_key_value` as an indexed column, mimicking DynamoDB's partition key indexing
+- The hybrid model (indexed keys + JSON attributes) balances query performance with schema flexibility
+- Unlike DynamoDB's distributed partitions, Pretender uses SQL table partitioning within a single database
+
+### Change Data Capture (CDC) Patterns
+
+DynamoDB Streams is a specialized implementation of the broader Change Data Capture pattern:
+
+**CDC Fundamentals:**
+- [How Change Data Capture (CDC) Works](https://www.confluent.io/blog/how-change-data-capture-works-patterns-solutions-implementation/) - Comprehensive overview of CDC patterns
+- [Change Data Capture (CDC) Design Pattern](https://medium.com/@luishrsoares/the-change-data-capture-cdc-design-pattern-fa8d3adc964f) - Common implementation approaches
+- [What is CDC? - Confluent](https://www.confluent.io/learn/change-data-capture/) - Industry-standard CDC concepts
+
+**CDC Implementation Patterns:**
+1. **Log-Based CDC**: Monitors database transaction logs (used by DynamoDB Streams internally)
+2. **Trigger-Based CDC**: Database triggers capture changes (alternative approach)
+3. **Timestamp-Based CDC**: Tracks last modification time (limited accuracy)
+
+**Pretender's CDC Approach:**
+- Uses **application-level capture** in `PdbItemManager` rather than database triggers
+- Captures events synchronously within the same transaction as the item modification
+- Stores events in dedicated stream tables with auto-incrementing sequence numbers
+- This approach ensures strong consistency and simplifies implementation
+
+### Stream Processing Architecture
+
+Understanding single-shard vs multi-shard architectures informed the decision to use a single-shard model:
+
+**Stream Processing Concepts:**
+- [Amazon Kinesis Data Streams - Terminology and Concepts](https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html) - Official AWS documentation on shards and stream processing
+- [Scaling Kinesis Data Streams](https://docs.aws.amazon.com/streams/latest/dev/kinesis-record-processor-scaling.html) - How resharding enables parallel processing
+- [Database Sharding Explained - AWS](https://aws.amazon.com/what-is/database-sharding/) - General sharding concepts
+
+**Key Capacity Metrics from AWS:**
+
+> "Each shard can support up to 5 transactions per second for reads, up to a maximum total data read rate of 2 MB per second and up to 1,000 records per second for writes, up to a maximum total data write rate of 1 MB per second."
+
+> "The data capacity of your stream is a function of the number of shards that you specify for the stream. Shards also enable you to parallelize the processing of large datasets and compute results quickly."
+
+**Single-Shard Rationale for Pretender:**
+- Local development/testing workloads typically generate <1,000 events/second
+- Single shard eliminates complex parent-child tracking logic
+- Provides strict global ordering (beneficial for testing and debugging)
+- SQL database auto-increment provides efficient sequence number generation
+- Trade-off: Simplicity vs. AWS-level horizontal scalability
+
+### Novel Pretender Design Decisions
+
+The following architectural decisions are **novel contributions** created specifically for Pretender and do not directly correspond to existing DynamoDB implementation details:
+
+#### 1. Hybrid Storage Model (Novel)
+
+**Design**: Store hash/sort key values as indexed SQL columns + complete AttributeValue map as JSON
+
+**Rationale**:
+- DynamoDB's internal storage format is proprietary and not publicly documented
+- Pretender's approach balances relational database strengths (indexed lookups) with NoSQL flexibility (schemaless JSON)
+- PostgreSQL JSONB provides efficient storage and querying for attribute data
+- This is a **novel design** not documented in AWS literature
+
+#### 2. GSI Composite Sort Key Pattern (Novel)
+
+**Design**: GSI tables use composite sort key: `[gsi_sort_key#]main_hash_key[#main_sort_key]`
+
+**Rationale**:
+- Ensures uniqueness when multiple items share the same GSI hash key
+- DynamoDB handles this internally through its distributed architecture
+- Pretender's approach is a **creative SQL-based solution** to achieve the same uniqueness guarantees
+- Pattern: `"electronics#USER123#ORDER456"` ensures each main table item has unique GSI row
+
+#### 3. Application-Level Stream Capture (Novel)
+
+**Design**: Capture stream events in `PdbItemManager` during item operations, not via database triggers
+
+**Rationale**:
+- Database triggers would add complexity and database-specific logic
+- Synchronous capture within transactions ensures strong consistency
+- Easier to test and debug compared to trigger-based approaches
+- This is a **pragmatic choice** that differs from typical CDC implementations
+
+#### 4. Single Static Shard Per Stream (Novel Simplification)
+
+**Design**: Always use `shard-00000` with no shard splitting/merging
+
+**Rationale**:
+- Sufficient for local development and testing workloads (<1,000 writes/second)
+- Eliminates parent-child shard tracking complexity
+- Provides stronger ordering guarantees than real DynamoDB Streams
+- This is a **deliberate simplification** documented in [STREAMS_ARCHITECTURE.md](STREAMS_ARCHITECTURE.md)
+
+**When This Matters:**
+- ✅ Works perfectly: Local dev, integration tests, small-scale production
+- ❌ Limitations: High-throughput scenarios (>5,000 writes/sec), testing multi-shard consumer logic
+
+See [STREAMS_ARCHITECTURE.md](STREAMS_ARCHITECTURE.md) for comprehensive documentation on this design decision.
+
+#### 5. Strong Consistency for All Reads (Novel Benefit)
+
+**Design**: All reads are strongly consistent, regardless of `ConsistentRead` parameter
+
+**Rationale**:
+- SQL databases (PostgreSQL, HSQLDB) provide ACID guarantees natively
+- Unlike DynamoDB's distributed replicas, SQL reads always reflect latest writes
+- This is an **inherent difference** that actually benefits testing scenarios
+- Production migration consideration: Applications may need to handle eventual consistency when moving to real DynamoDB
+
+### Summary of Design Influences
+
+| Aspect | AWS DynamoDB Reference | Pretender Implementation |
+|--------|----------------------|--------------------------|
+| Stream Shards | Multiple shards, dynamic splitting | Single static shard (novel simplification) |
+| Partition Keys | Hash function distributes across partitions | Indexed SQL columns (novel hybrid) |
+| CDC Pattern | Log-based internal mechanism | Application-level capture (novel approach) |
+| GSI Uniqueness | Distributed system handles internally | Composite sort key pattern (novel SQL solution) |
+| Consistency | Eventually consistent (default) | Always strongly consistent (novel benefit) |
+| Capacity Scaling | Automatic partition/shard splitting | Fixed capacity (SQL database limits) |
+
+**Key Takeaway**: Pretender is informed by AWS DynamoDB's documented behavior and industry-standard CDC patterns, but includes several **novel architectural decisions** optimized for SQL database backends and local development use cases.
+
+---
+
 ## Conclusion
 
 The implementation is **production-ready** and provides a fully functional DynamoDB-compatible client backed by SQL databases. All 10 core item operations (including batch operations and transactions) are implemented with comprehensive test coverage, proper error handling, and adherence to existing pretender architectural patterns. Additionally, Global Secondary Indexes (GSI), Time-To-Live (TTL) with background cleanup, DynamoDB Streams with 24-hour retention, Expression Attribute Names, and full Conditional Writes support are implemented.
