@@ -2,6 +2,18 @@
 
 A DynamoDB-compatible library for Java that stores data in SQL databases (PostgreSQL/HSQLDB) instead of DynamoDB. Perfect for local development and testing without AWS dependencies.
 
+## NOTICE
+
+This module has primarily been written by Claude.AI as an experiment.
+It has not been used in production as of 2026-01-02, and not fully reviewed
+by a human yet. Use at your own risk.
+
+That said, this seemed like a great way to use Claude to write code as
+everything written can be compared against localstack, dynamodb-local, and
+AWS DynamoDB itself. I plan to have integ tests do just that to validate it.
+
+I am in the process of reviewing the code and validating it's correctness.
+
 ## Overview
 
 The ability to run DynamoDB locally for development that is provided
