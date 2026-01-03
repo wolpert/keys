@@ -1,20 +1,8 @@
 # Pretender
 
-Provides for a AWS DynamoDB compatible library that works with Java.
-The resulting data is stored in a SQL database, primarily designed for
-PostgreSQL but not limited to it.
+A DynamoDB-compatible library for Java that stores data in SQL databases (PostgreSQL/HSQLDB) instead of DynamoDB. Perfect for local development and testing without AWS dependencies.
 
-# _WARNING_: This was built with Claude
-
-Slop warning... I'm in the process of reviewing the code, but consider it
-experimental until I can verify it works as intended and is well designed.
-
-**Update**: The JVM assertion failure in streaming tests has been fixed. The issue was
-improper HSQLDB memory management in tests (databases not shut down after each test),
-causing OutOfMemoryError. All 297 tests now pass successfully. Streaming features are
-functional but still require validation in production environments.
-
-## Idea
+## Overview
 
 The ability to run DynamoDB locally for development that is provided
 by Amazon's [local dynamodb project](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html) is great feature.
@@ -24,7 +12,7 @@ However, there are a few shortcomings that it does not address.
 1. It is useful during development to have easy access to the datastore. They do not give that.
 2. If you are a startup, it may be a while before you can fully realize the benefit of running in the cloud.
 
-# Claude notes below
+Pretender addresses these shortcomings by providing a full DynamoDB-compatible client backed by standard SQL databases.
 
 ## Features
 
@@ -47,8 +35,16 @@ Pretender now includes full support for DynamoDB Streams:
 
 See [STREAMS_IMPLEMENTATION.md](STREAMS_IMPLEMENTATION.md) for detailed documentation.
 
-## Drawbacks
+## Documentation
 
-1. It is not the complete DynamoDB implementation of the API.
-2. Some advanced features like global tables, transactions, and PartiQL are not yet implemented.
-3. 
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Complete implementation details, architecture, and usage examples
+- **[STREAMS_IMPLEMENTATION.md](STREAMS_IMPLEMENTATION.md)** - DynamoDB Streams specific documentation
+- **[TODO.md](TODO.md)** - Roadmap and future enhancements
+
+## Limitations
+
+1. Not all DynamoDB APIs are implemented (PartiQL, global tables)
+2. Single shard implementation for streams (sufficient for local development)
+3. Intended for development/testing - use AWS DynamoDB for production workloads
+
+For complete feature list and implementation status, see [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md).
