@@ -63,6 +63,7 @@ class PdbItemManagerTest {
   @Mock private GsiProjectionHelper gsiProjectionHelper;
   @Mock private com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
   @Mock private com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper;
+  @Mock private com.codeheadsystems.pretender.util.CapacityCalculator capacityCalculator;
   @Mock private Clock clock;
   @Mock private org.jdbi.v3.core.Jdbi jdbi;
 
@@ -73,7 +74,7 @@ class PdbItemManagerTest {
   void setup() {
     manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
         attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
-        gsiProjectionHelper, streamCaptureHelper, encryptionHelper, clock, jdbi);
+        gsiProjectionHelper, streamCaptureHelper, encryptionHelper, capacityCalculator, clock, jdbi);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)

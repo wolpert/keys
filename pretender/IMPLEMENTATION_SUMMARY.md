@@ -708,6 +708,59 @@ These can be added incrementally based on usage requirements.
 
 ---
 
+## Implementation Differences from AWS DynamoDB
+
+While Pretender provides full API compatibility with AWS DynamoDB, there are some inherent differences due to the SQL database backend:
+
+### Consistent Reads
+
+**Behavior**: All read operations in Pretender are **always strongly consistent**, regardless of the `ConsistentRead` parameter value.
+
+**Rationale**:
+- SQL databases (PostgreSQL, HSQLDB) provide strong consistency by default
+- Unlike DynamoDB's eventually consistent read replicas, SQL databases use ACID transactions
+- There is no eventual consistency model in the SQL backend
+
+**Impact**:
+- `ConsistentRead=false` is accepted but ignored (reads are still strongly consistent)
+- `ConsistentRead=true` works as expected (strongly consistent reads)
+- No performance penalty for consistent reads (unlike DynamoDB where consistent reads may be slower)
+- No need for application retry logic to handle stale data
+
+**Operations Affected**:
+- `getItem(ConsistentRead)`
+- `batchGetItem(ConsistentRead)`
+- `query(ConsistentRead)`
+
+**Note**: This is actually a **benefit** for development and testing - all reads immediately reflect the latest writes without any consistency concerns. Applications using Pretender for local development can assume strong consistency, which matches most testing expectations.
+
+**Migration Consideration**: When migrating from Pretender to AWS DynamoDB in production, ensure your application is designed to handle eventual consistency if you use `ConsistentRead=false`. Consider setting `ConsistentRead=true` in production if strong consistency is required.
+
+### Performance Characteristics
+
+**DynamoDB** uses distributed hash partitioning and SSD-backed storage optimized for predictable single-digit millisecond latency at any scale.
+
+**Pretender** uses SQL database indexes and JSONB storage, which have different performance characteristics:
+- **Query/Scan**: May be faster for small datasets (<10K items), slower for very large datasets
+- **Batch Operations**: Optimized with SQL batch inserts and IN clause queries
+- **GSI Queries**: May be slower than DynamoDB due to SQL JOIN-like behavior
+- **Transactions**: Similar performance to DynamoDB for small transactions (<10 items)
+
+**Recommendation**: Use Pretender for development/testing and AWS DynamoDB for production workloads requiring predictable low-latency at scale.
+
+### Capacity Units
+
+**Behavior**: `ReturnConsumedCapacity` parameter is accepted but not currently implemented.
+
+**Impact**:
+- No capacity unit tracking or reporting
+- No throttling based on provisioned capacity
+- Unlimited throughput (limited only by SQL database performance)
+
+This is acceptable for development/testing but differs from production DynamoDB billing and throttling behavior.
+
+---
+
 ## Testing Instructions
 
 ```bash

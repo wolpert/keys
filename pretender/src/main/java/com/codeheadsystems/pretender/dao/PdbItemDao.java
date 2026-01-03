@@ -498,4 +498,171 @@ public class PdbItemDao {
   public List<PdbItem> scan(final String tableName, final int limit) {
     return scan(tableName, limit, Optional.empty(), Optional.empty());
   }
+
+  /**
+   * Batch insert multiple items into a table in a single database round-trip.
+   * Uses JDBI's batch API for optimal performance.
+   *
+   * @param tableName the table name
+   * @param items     the list of items to insert
+   * @return the number of items successfully inserted
+   */
+  public int batchInsert(final String tableName, final List<PdbItem> items) {
+    log.trace("batchInsert({}, {} items)", tableName, items.size());
+
+    if (items.isEmpty()) {
+      return 0;
+    }
+
+    // For PostgreSQL, we need to cast JSON string to JSONB
+    final String jsonValuePlaceholder = database.usePostgresql()
+        ? "CAST(:attributesJson AS JSONB)"
+        : ":attributesJson";
+
+    final String sql = String.format(
+        "INSERT INTO \"%s\" (hash_key_value, sort_key_value, attributes_json, create_date, update_date) " +
+            "VALUES (:hashKeyValue, :sortKeyValue, %s, :createDate, :updateDate)",
+        tableName,
+        jsonValuePlaceholder
+    );
+
+    return jdbi.withHandle(handle -> {
+      final org.jdbi.v3.core.statement.PreparedBatch batch = handle.prepareBatch(sql);
+
+      for (PdbItem item : items) {
+        batch.bind("hashKeyValue", item.hashKeyValue())
+            .bind("sortKeyValue", item.sortKeyValue().orElse(null))
+            .bind("attributesJson", item.attributesJson())
+            .bind("createDate", item.createDate())
+            .bind("updateDate", item.updateDate())
+            .add();
+      }
+
+      final int[] results = batch.execute();
+      return java.util.Arrays.stream(results).sum();
+    });
+  }
+
+  /**
+   * Batch get multiple items by their primary keys in a single database round-trip.
+   * Uses SQL IN clause or UNION ALL for optimal performance.
+   *
+   * @param tableName the table name
+   * @param keys      the list of (hashKey, sortKey) pairs to retrieve
+   * @return the list of items found (may be fewer than requested)
+   */
+  public List<PdbItem> batchGet(final String tableName,
+                                final List<KeyPair> keys) {
+    log.trace("batchGet({}, {} keys)", tableName, keys.size());
+
+    if (keys.isEmpty()) {
+      return List.of();
+    }
+
+    // Separate keys by whether they have sort keys
+    final boolean hasSortKeys = keys.stream().anyMatch(k -> k.sortKey().isPresent());
+
+    if (!hasSortKeys) {
+      // Simple case: hash key only - use IN clause
+      return batchGetHashKeyOnly(tableName, keys);
+    } else {
+      // Complex case: mix of hash+sort keys - use UNION ALL or composite IN
+      return batchGetWithSortKeys(tableName, keys);
+    }
+  }
+
+  /**
+   * Batch get items using hash key IN clause (no sort keys).
+   */
+  private List<PdbItem> batchGetHashKeyOnly(final String tableName, final List<KeyPair> keys) {
+    final String sql = String.format(
+        "SELECT * FROM \"%s\" WHERE hash_key_value IN (<hashKeys>)",
+        tableName
+    );
+
+    final List<String> hashKeys = keys.stream()
+        .map(KeyPair::hashKey)
+        .distinct()
+        .toList();
+
+    return jdbi.withHandle(handle -> {
+      final List<PdbItem> results = handle.createQuery(sql)
+          .bindList("hashKeys", hashKeys)
+          .map((rs, ctx) -> {
+            final PdbItem item = com.codeheadsystems.pretender.model.ImmutablePdbItem.builder()
+                .tableName(tableName)
+                .hashKeyValue(rs.getString("hash_key_value"))
+                .sortKeyValue(rs.getString("sort_key_value") != null ?
+                    Optional.of(rs.getString("sort_key_value")) : Optional.empty())
+                .attributesJson(rs.getString("attributes_json"))
+                .createDate(rs.getTimestamp("create_date").toInstant())
+                .updateDate(rs.getTimestamp("update_date").toInstant())
+                .build();
+            return item;
+          })
+          .list();
+      return results;
+    });
+  }
+
+  /**
+   * Batch get items with hash and sort keys using UNION ALL.
+   */
+  private List<PdbItem> batchGetWithSortKeys(final String tableName, final List<KeyPair> keys) {
+    // Build UNION ALL query for each key pair
+    final StringBuilder sql = new StringBuilder();
+    for (int i = 0; i < keys.size(); i++) {
+      if (i > 0) {
+        sql.append(" UNION ALL ");
+      }
+      final KeyPair key = keys.get(i);
+      if (key.sortKey().isPresent()) {
+        sql.append(String.format(
+            "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey%d AND sort_key_value = :sortKey%d",
+            tableName, i, i
+        ));
+      } else {
+        sql.append(String.format(
+            "SELECT * FROM \"%s\" WHERE hash_key_value = :hashKey%d AND sort_key_value IS NULL",
+            tableName, i
+        ));
+      }
+    }
+
+    return jdbi.withHandle(handle -> {
+      var query = handle.createQuery(sql.toString());
+
+      for (int i = 0; i < keys.size(); i++) {
+        final KeyPair key = keys.get(i);
+        query = query.bind("hashKey" + i, key.hashKey());
+        if (key.sortKey().isPresent()) {
+          query = query.bind("sortKey" + i, key.sortKey().get());
+        }
+      }
+
+      final List<PdbItem> results = query.map((rs, ctx) -> {
+            final PdbItem item = com.codeheadsystems.pretender.model.ImmutablePdbItem.builder()
+                .tableName(tableName)
+                .hashKeyValue(rs.getString("hash_key_value"))
+                .sortKeyValue(rs.getString("sort_key_value") != null ?
+                    Optional.of(rs.getString("sort_key_value")) : Optional.empty())
+                .attributesJson(rs.getString("attributes_json"))
+                .createDate(rs.getTimestamp("create_date").toInstant())
+                .updateDate(rs.getTimestamp("update_date").toInstant())
+                .build();
+            return item;
+          })
+          .list();
+      return results;
+    });
+  }
+
+  /**
+   * Key pair for batch get operations.
+   *
+   * @param hashKey the hash key value
+   * @param sortKey the optional sort key value
+   */
+  public record KeyPair(String hashKey, Optional<String> sortKey) {
+  }
 }
