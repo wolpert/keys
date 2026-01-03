@@ -42,6 +42,7 @@ public class PdbItemManager {
   private final UpdateExpressionParser updateExpressionParser;
   private final GsiProjectionHelper gsiProjectionHelper;
   private final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
+  private final com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper;
   private final Clock clock;
   private final org.jdbi.v3.core.Jdbi jdbi;
 
@@ -58,6 +59,7 @@ public class PdbItemManager {
    * @param updateExpressionParser       the update expression parser
    * @param gsiProjectionHelper          the GSI projection helper
    * @param streamCaptureHelper          the stream capture helper
+   * @param encryptionHelper             the encryption helper
    * @param clock                        the clock
    * @param jdbi                         the jdbi instance
    */
@@ -72,12 +74,13 @@ public class PdbItemManager {
                         final UpdateExpressionParser updateExpressionParser,
                         final GsiProjectionHelper gsiProjectionHelper,
                         final com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper,
+                        final com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper,
                         final Clock clock,
                         final org.jdbi.v3.core.Jdbi jdbi) {
-    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+    log.info("PdbItemManager({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         tableManager, itemTableManager, itemDao, itemConverter, attributeValueConverter,
         conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser, gsiProjectionHelper,
-        streamCaptureHelper, clock, jdbi);
+        streamCaptureHelper, encryptionHelper, clock, jdbi);
     this.tableManager = tableManager;
     this.itemTableManager = itemTableManager;
     this.itemDao = itemDao;
@@ -88,6 +91,7 @@ public class PdbItemManager {
     this.updateExpressionParser = updateExpressionParser;
     this.gsiProjectionHelper = gsiProjectionHelper;
     this.streamCaptureHelper = streamCaptureHelper;
+    this.encryptionHelper = encryptionHelper;
     this.clock = clock;
     this.jdbi = jdbi;
   }
@@ -152,8 +156,11 @@ public class PdbItemManager {
       streamCaptureHelper.captureInsert(tableName, request.item());
     }
 
+    // Encrypt specified attributes before storage
+    final Map<String, AttributeValue> encryptedItem = encryptionHelper.encryptAttributes(request.item(), metadata);
+
     // Convert to PdbItem
-    final PdbItem pdbItem = itemConverter.toPdbItem(tableName, request.item(), metadata);
+    final PdbItem pdbItem = itemConverter.toPdbItem(tableName, encryptedItem, metadata);
 
     // Insert or update (putItem is an upsert operation)
     if (existingPdbItem.isPresent()) {
@@ -198,6 +205,9 @@ public class PdbItemManager {
     // Convert to AttributeValue map
     Map<String, AttributeValue> item = attributeValueConverter.fromJson(
         pdbItem.get().attributesJson());
+
+    // Decrypt encrypted attributes
+    item = encryptionHelper.decryptAttributes(item, metadata);
 
     // Check TTL expiration and delete if expired
     if (isExpired(metadata, item)) {
@@ -246,6 +256,8 @@ public class PdbItemManager {
     if (existingPdbItem.isPresent()) {
       currentAttributes = new HashMap<>(attributeValueConverter.fromJson(
           existingPdbItem.get().attributesJson()));
+      // Decrypt existing attributes before applying update
+      currentAttributes = new HashMap<>(encryptionHelper.decryptAttributes(currentAttributes, metadata));
     } else {
       currentAttributes = new HashMap<>(request.key());
     }
@@ -272,13 +284,17 @@ public class PdbItemManager {
       streamCaptureHelper.captureInsert(tableName, updatedAttributes);
     }
 
+    // Encrypt specified attributes before storage
+    final Map<String, AttributeValue> encryptedUpdatedAttributes =
+        encryptionHelper.encryptAttributes(updatedAttributes, metadata);
+
     // Convert to PdbItem and save
     final PdbItem updatedPdbItem;
     if (existingPdbItem.isPresent()) {
       updatedPdbItem = itemConverter.updatePdbItem(
-          existingPdbItem.get(), updatedAttributes, metadata);
+          existingPdbItem.get(), encryptedUpdatedAttributes, metadata);
     } else {
-      updatedPdbItem = itemConverter.toPdbItem(tableName, updatedAttributes, metadata);
+      updatedPdbItem = itemConverter.toPdbItem(tableName, encryptedUpdatedAttributes, metadata);
     }
 
     if (existingPdbItem.isPresent()) {
@@ -447,6 +463,9 @@ public class PdbItemManager {
       Map<String, AttributeValue> attributes = attributeValueConverter.fromJson(
           item.attributesJson());
 
+      // Decrypt encrypted attributes
+      attributes = encryptionHelper.decryptAttributes(attributes, metadata);
+
       // Check TTL expiration
       if (isExpired(metadata, attributes)) {
         log.debug("Skipping expired item in query results");
@@ -535,6 +554,9 @@ public class PdbItemManager {
     for (PdbItem item : resultItems) {
       Map<String, AttributeValue> attributes = attributeValueConverter.fromJson(
           item.attributesJson());
+
+      // Decrypt encrypted attributes
+      attributes = encryptionHelper.decryptAttributes(attributes, metadata);
 
       // Check TTL expiration
       if (isExpired(metadata, attributes)) {

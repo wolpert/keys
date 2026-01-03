@@ -62,6 +62,7 @@ class PdbItemManagerTest {
   @Mock private UpdateExpressionParser updateExpressionParser;
   @Mock private GsiProjectionHelper gsiProjectionHelper;
   @Mock private com.codeheadsystems.pretender.helper.StreamCaptureHelper streamCaptureHelper;
+  @Mock private com.codeheadsystems.pretender.helper.AttributeEncryptionHelper encryptionHelper;
   @Mock private Clock clock;
   @Mock private org.jdbi.v3.core.Jdbi jdbi;
 
@@ -72,7 +73,7 @@ class PdbItemManagerTest {
   void setup() {
     manager = new PdbItemManager(tableManager, itemTableManager, itemDao, itemConverter,
         attributeValueConverter, conditionExpressionParser, keyConditionExpressionParser, updateExpressionParser,
-        gsiProjectionHelper, streamCaptureHelper, clock, jdbi);
+        gsiProjectionHelper, streamCaptureHelper, encryptionHelper, clock, jdbi);
 
     metadata = ImmutablePdbMetadata.builder()
         .name(TABLE_NAME)
@@ -83,6 +84,12 @@ class PdbItemManagerTest {
 
     // Mock for item size validation (lenient because not all tests call putItem/updateItem)
     org.mockito.Mockito.lenient().when(attributeValueConverter.toJson(any())).thenReturn("{}");
+
+    // Mock for encryption helper - pass through by default (no encryption)
+    org.mockito.Mockito.lenient().when(encryptionHelper.encryptAttributes(any(), any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    org.mockito.Mockito.lenient().when(encryptionHelper.decryptAttributes(any(), any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   @Test

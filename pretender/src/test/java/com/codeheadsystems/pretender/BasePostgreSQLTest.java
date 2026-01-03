@@ -22,6 +22,7 @@ import com.codeheadsystems.dbu.factory.JdbiFactory;
 import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
 import com.codeheadsystems.dbu.model.ImmutableDatabase;
 import com.codeheadsystems.pretender.dagger.PretenderModule;
+import com.codeheadsystems.pretender.dagger.PretenderComponent;
 import com.codeheadsystems.pretender.dao.GsiListArgumentFactory;
 import com.codeheadsystems.pretender.dao.GsiListColumnMapper;
 import com.codeheadsystems.pretender.model.Configuration;
@@ -51,6 +52,7 @@ public abstract class BasePostgreSQLTest {
 
   protected Jdbi jdbi;
   protected Configuration configuration;
+  protected PretenderComponent component;
 
   @BeforeEach
   void setupPostgreSQL() {
@@ -69,6 +71,9 @@ public abstract class BasePostgreSQLTest {
     final ObjectMapper objectMapper = new ObjectMapper();
     jdbi.registerArgument(new GsiListArgumentFactory(objectMapper));
     jdbi.registerColumnMapper(new GsiListColumnMapper(objectMapper));
+
+    // Initialize component for tests that need it
+    component = PretenderComponent.instance(configuration);
   }
 
   @AfterEach
