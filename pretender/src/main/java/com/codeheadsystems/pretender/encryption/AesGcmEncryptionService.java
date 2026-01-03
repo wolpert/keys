@@ -62,7 +62,7 @@ public class AesGcmEncryptionService implements EncryptionService {
   /**
    * Instantiates a new AES-GCM encryption service with a provided master key.
    *
-   * @param masterKey     the master key (must be 32 bytes for AES-256)
+   * @param masterKey    the master key (must be 32 bytes for AES-256)
    * @param objectMapper the object mapper for serializing AttributeValues
    */
   public AesGcmEncryptionService(final byte[] masterKey, final ObjectMapper objectMapper) {

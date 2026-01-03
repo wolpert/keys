@@ -44,6 +44,11 @@ public class CapacityCalculator {
 
   private final AttributeValueConverter converter;
 
+  /**
+   * Instantiates a new Capacity calculator.
+   *
+   * @param converter the converter
+   */
   @Inject
   public CapacityCalculator(final AttributeValueConverter converter) {
     this.converter = converter;

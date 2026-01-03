@@ -30,7 +30,6 @@ dependencies {
 
     testAnnotationProcessor(libs.immutables.value)
     testImplementation(libs.bundles.testing)
-    testImplementation(libs.codehead.test)
 }
 
 tasks.test {
