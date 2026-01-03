@@ -36,12 +36,67 @@ import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 /**
  * Manager for DynamoDB Streams operations.
  * Provides business logic for stream consumption API.
+ *
+ * <h2>Shard Management Implementation</h2>
+ * <p>
+ * Pretender uses a <b>single-shard model</b> for all DynamoDB Streams, unlike real AWS DynamoDB
+ * which dynamically creates and splits shards based on traffic patterns.
+ * </p>
+ *
+ * <h3>Design Rationale</h3>
+ * <ul>
+ *   <li><b>Simplicity</b>: No complex shard splitting/merging logic required</li>
+ *   <li><b>Sequential Guarantees</b>: All records globally ordered by sequence number</li>
+ *   <li><b>SQL-Friendly</b>: Leverages database auto-increment for sequence numbers</li>
+ *   <li><b>Sufficient for Testing</b>: Local development doesn't need AWS-level scale</li>
+ * </ul>
+ *
+ * <h3>Limitations</h3>
+ * <ul>
+ *   <li><b>No Parallel Processing</b>: Single shard = no parallel consumer support</li>
+ *   <li><b>Fixed Throughput</b>: Limited by single database query performance (~5K-10K records/sec)</li>
+ *   <li><b>No Hash Partitioning</b>: All records in one shard regardless of hash key</li>
+ * </ul>
+ *
+ * <h3>When This Matters</h3>
+ * <p><b>Works fine for:</b></p>
+ * <ul>
+ *   <li>Local development (&lt;100 writes/second)</li>
+ *   <li>Integration testing (&lt;1,000 events)</li>
+ *   <li>Small-scale production (&lt;1,000 writes/second)</li>
+ * </ul>
+ *
+ * <p><b>Not suitable for:</b></p>
+ * <ul>
+ *   <li>High-throughput load testing (&gt;5,000 writes/second)</li>
+ *   <li>Testing multi-shard consumer logic</li>
+ *   <li>Production traffic simulation requiring shard splits</li>
+ * </ul>
+ *
+ * <p>See <code>STREAMS_ARCHITECTURE.md</code> for detailed documentation on shard management,
+ * limitations, and future enhancement options.</p>
+ *
+ * @see <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html">AWS DynamoDB Streams</a>
  */
 @Singleton
 public class PdbStreamManager {
 
   private static final Logger log = LoggerFactory.getLogger(PdbStreamManager.class);
-  private static final String SHARD_ID = "shard-00000"; // Single shard for simplicity
+
+  /**
+   * Single static shard ID used for all streams.
+   * <p>
+   * Real AWS DynamoDB Streams dynamically create shards (shard-00000, shard-00001, etc.)
+   * and split them based on traffic. Pretender uses a single shard for simplicity.
+   * This means all stream records for a table are stored sequentially in one shard,
+   * providing global ordering but no parallel processing capability.
+   * </p>
+   * <p>
+   * <b>Trade-off</b>: Simpler implementation vs. limited throughput and no parallel consumption.
+   * </p>
+   */
+  private static final String SHARD_ID = "shard-00000";
+
   private static final int DEFAULT_LIMIT = 1000;
 
   private final PdbMetadataDao metadataDao;
@@ -105,11 +160,15 @@ public class PdbStreamManager {
     final long latestSequence = streamDao.getLatestSequenceNumber(streamTableName);
 
     // Build shard with sequence number range
+    // Note: In real DynamoDB, endingSequenceNumber is set when a shard closes (during split/merge).
+    // Pretender never closes shards, so endingSequenceNumber is always null.
     final SequenceNumberRange sequenceNumberRange = SequenceNumberRange.builder()
         .startingSequenceNumber(String.valueOf(trimHorizon))
         .endingSequenceNumber(latestSequence > 0 ? String.valueOf(latestSequence) : null)
         .build();
 
+    // Always returns single shard with ID "shard-00000"
+    // Real AWS DynamoDB would return multiple shards: [shard-00000, shard-00001, ...]
     final Shard shard = Shard.builder()
         .shardId(SHARD_ID)
         .sequenceNumberRange(sequenceNumberRange)
