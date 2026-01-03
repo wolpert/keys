@@ -175,8 +175,18 @@ public class PdbItemManager {
     // Maintain GSI tables
     maintainGsiTables(metadata, request.item(), pdbItem);
 
-    // Build response
-    return PutItemResponse.builder().build();
+    // Build response with optional consumed capacity
+    final PutItemResponse.Builder responseBuilder = PutItemResponse.builder();
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+          capacityCalculator.calculateWriteCapacity(tableName, request.item());
+      responseBuilder.consumedCapacity(consumedCapacity);
+    }
+
+    return responseBuilder.build();
   }
 
   /**
@@ -333,6 +343,14 @@ public class PdbItemManager {
       responseBuilder.attributes(currentAttributes);
     }
 
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+          capacityCalculator.calculateWriteCapacity(tableName, updatedAttributes);
+      responseBuilder.consumedCapacity(consumedCapacity);
+    }
+
     return responseBuilder.build();
   }
 
@@ -396,6 +414,17 @@ public class PdbItemManager {
     final DeleteItemResponse.Builder responseBuilder = DeleteItemResponse.builder();
     if (oldItem != null) {
       responseBuilder.attributes(oldItem);
+    }
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      // For delete, use old item size if it existed, otherwise 0
+      if (oldItem != null) {
+        final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+            capacityCalculator.calculateWriteCapacity(tableName, oldItem);
+        responseBuilder.consumedCapacity(consumedCapacity);
+      }
     }
 
     return responseBuilder.build();
@@ -535,6 +564,25 @@ public class PdbItemManager {
       responseBuilder.lastEvaluatedKey(lastKey);
     }
 
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      // Sum capacity for all returned items
+      double totalCapacityUnits = 0.0;
+      for (Map<String, AttributeValue> item : resultAttributeMaps) {
+        final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity itemCapacity =
+            capacityCalculator.calculateReadCapacity(tableName, item);
+        totalCapacityUnits += itemCapacity.capacityUnits();
+      }
+      final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+          software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+              .tableName(tableName)
+              .capacityUnits(totalCapacityUnits)
+              .readCapacityUnits(totalCapacityUnits)
+              .build();
+      responseBuilder.consumedCapacity(consumedCapacity);
+    }
+
     return responseBuilder.build();
   }
 
@@ -625,6 +673,25 @@ public class PdbItemManager {
           lastKey.put(metadata.sortKey().orElseThrow(),
               AttributeValue.builder().s(sk).build()));
       responseBuilder.lastEvaluatedKey(lastKey);
+    }
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      // Sum capacity for all returned items
+      double totalCapacityUnits = 0.0;
+      for (Map<String, AttributeValue> item : resultAttributeMaps) {
+        final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity itemCapacity =
+            capacityCalculator.calculateReadCapacity(tableName, item);
+        totalCapacityUnits += itemCapacity.capacityUnits();
+      }
+      final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+          software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+              .tableName(tableName)
+              .capacityUnits(totalCapacityUnits)
+              .readCapacityUnits(totalCapacityUnits)
+              .build();
+      responseBuilder.consumedCapacity(consumedCapacity);
     }
 
     return responseBuilder.build();
@@ -893,9 +960,40 @@ public class PdbItemManager {
       }
     }
 
-    return BatchGetItemResponse.builder()
-        .responses(responses)
-        .build();
+    // Build response
+    final BatchGetItemResponse.Builder responseBuilder = BatchGetItemResponse.builder()
+        .responses(responses);
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      final List<software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity> consumedCapacities = new ArrayList<>();
+
+      // Calculate capacity for each table
+      for (Map.Entry<String, List<Map<String, AttributeValue>>> entry : responses.entrySet()) {
+        final String tableName = entry.getKey();
+        final List<Map<String, AttributeValue>> items = entry.getValue();
+
+        double totalCapacityUnits = 0.0;
+        for (Map<String, AttributeValue> item : items) {
+          final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity itemCapacity =
+              capacityCalculator.calculateReadCapacity(tableName, item);
+          totalCapacityUnits += itemCapacity.capacityUnits();
+        }
+
+        final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+            software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+                .tableName(tableName)
+                .capacityUnits(totalCapacityUnits)
+                .readCapacityUnits(totalCapacityUnits)
+                .build();
+        consumedCapacities.add(consumedCapacity);
+      }
+
+      responseBuilder.consumedCapacity(consumedCapacities);
+    }
+
+    return responseBuilder.build();
   }
 
   /**
@@ -923,6 +1021,9 @@ public class PdbItemManager {
     // Track unprocessed items (items that failed to write)
     final Map<String, List<WriteRequest>> unprocessedItems = new HashMap<>();
 
+    // Track consumed capacity per table if requested
+    final Map<String, Double> capacityByTable = new HashMap<>();
+
     // Process each table in the request
     for (Map.Entry<String, List<WriteRequest>> entry : request.requestItems().entrySet()) {
       final String tableName = entry.getKey();
@@ -948,6 +1049,13 @@ public class PdbItemManager {
                 .tableName(tableName)
                 .item(putRequest.item())
                 .build());
+
+            // Track capacity if requested
+            if (request.returnConsumedCapacity() != null &&
+                request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+              final double itemCapacity = capacityCalculator.calculateWriteCapacity(tableName, putRequest.item()).capacityUnits();
+              capacityByTable.merge(tableName, itemCapacity, Double::sum);
+            }
           } else if (writeRequest.deleteRequest() != null) {
             // Handle DeleteRequest
             final DeleteRequest deleteRequest = writeRequest.deleteRequest();
@@ -955,6 +1063,12 @@ public class PdbItemManager {
                 .tableName(tableName)
                 .key(deleteRequest.key())
                 .build());
+
+            // Track capacity if requested - for delete, use 1 WCU per item
+            if (request.returnConsumedCapacity() != null &&
+                request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+              capacityByTable.merge(tableName, 1.0, Double::sum);
+            }
           }
         } catch (Exception e) {
           // Write failed - add to unprocessed items
@@ -964,17 +1078,35 @@ public class PdbItemManager {
       }
     }
 
-    // Return response with unprocessed items if any
-    if (unprocessedItems.isEmpty()) {
-      return BatchWriteItemResponse.builder().build();
-    } else {
+    // Build response
+    final BatchWriteItemResponse.Builder responseBuilder = BatchWriteItemResponse.builder();
+
+    if (!unprocessedItems.isEmpty()) {
       log.info("BatchWriteItem completed with {} unprocessed item(s) across {} table(s)",
           unprocessedItems.values().stream().mapToInt(List::size).sum(),
           unprocessedItems.size());
-      return BatchWriteItemResponse.builder()
-          .unprocessedItems(unprocessedItems)
-          .build();
+      responseBuilder.unprocessedItems(unprocessedItems);
     }
+
+    // Add consumed capacity if requested
+    if (request.returnConsumedCapacity() != null &&
+        request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+      final List<software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity> consumedCapacities = new ArrayList<>();
+
+      for (Map.Entry<String, Double> entry : capacityByTable.entrySet()) {
+        final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+            software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+                .tableName(entry.getKey())
+                .capacityUnits(entry.getValue())
+                .writeCapacityUnits(entry.getValue())
+                .build();
+        consumedCapacities.add(consumedCapacity);
+      }
+
+      responseBuilder.consumedCapacity(consumedCapacities);
+    }
+
+    return responseBuilder.build();
   }
 
   /**
@@ -997,6 +1129,9 @@ public class PdbItemManager {
     }
 
     final List<ItemResponse> responses = new ArrayList<>();
+
+    // Track consumed capacity per table if requested
+    final Map<String, Double> capacityByTable = new HashMap<>();
 
     try {
       // Process each get operation
@@ -1023,11 +1158,39 @@ public class PdbItemManager {
             .build();
 
         responses.add(itemResponse);
+
+        // Track capacity if requested
+        if (request.returnConsumedCapacity() != null &&
+            request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE &&
+            getResponse.item() != null && !getResponse.item().isEmpty()) {
+          final double itemCapacity = capacityCalculator.calculateReadCapacity(tableName, getResponse.item()).capacityUnits();
+          capacityByTable.merge(tableName, itemCapacity, Double::sum);
+        }
       }
 
-      return TransactGetItemsResponse.builder()
-          .responses(responses)
-          .build();
+      // Build response
+      final TransactGetItemsResponse.Builder responseBuilder = TransactGetItemsResponse.builder()
+          .responses(responses);
+
+      // Add consumed capacity if requested
+      if (request.returnConsumedCapacity() != null &&
+          request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+        final List<software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity> consumedCapacities = new ArrayList<>();
+
+        for (Map.Entry<String, Double> entry : capacityByTable.entrySet()) {
+          final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+              software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+                  .tableName(entry.getKey())
+                  .capacityUnits(entry.getValue())
+                  .readCapacityUnits(entry.getValue())
+                  .build();
+          consumedCapacities.add(consumedCapacity);
+        }
+
+        responseBuilder.consumedCapacity(consumedCapacities);
+      }
+
+      return responseBuilder.build();
 
     } catch (ResourceNotFoundException e) {
       // Convert to TransactionCanceledException
@@ -1076,6 +1239,9 @@ public class PdbItemManager {
 
     final List<CancellationReason> cancellationReasons = new ArrayList<>();
 
+    // Track consumed capacity per table if requested
+    final Map<String, Double> capacityByTable = new HashMap<>();
+
     try {
       // Wrap ALL operations in a single database transaction for true atomicity
       return jdbi.inTransaction(handle -> {
@@ -1084,6 +1250,35 @@ public class PdbItemManager {
         for (TransactWriteItem transactWriteItem : request.transactItems()) {
           try {
             processTransactWriteItem(transactWriteItem, handle);
+
+            // Track capacity if requested
+            if (request.returnConsumedCapacity() != null &&
+                request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+
+              String tableName = null;
+              Map<String, AttributeValue> item = null;
+
+              if (transactWriteItem.put() != null) {
+                tableName = transactWriteItem.put().tableName();
+                item = transactWriteItem.put().item();
+              } else if (transactWriteItem.update() != null) {
+                tableName = transactWriteItem.update().tableName();
+                // For update, estimate 1 WCU (would need to track actual item size)
+                capacityByTable.merge(tableName, 1.0, Double::sum);
+                tableName = null; // Skip item-based calculation below
+              } else if (transactWriteItem.delete() != null) {
+                tableName = transactWriteItem.delete().tableName();
+                // For delete, use 1 WCU
+                capacityByTable.merge(tableName, 1.0, Double::sum);
+                tableName = null; // Skip item-based calculation below
+              }
+              // ConditionCheck doesn't consume write capacity
+
+              if (tableName != null && item != null) {
+                final double itemCapacity = capacityCalculator.calculateWriteCapacity(tableName, item).capacityUnits();
+                capacityByTable.merge(tableName, itemCapacity, Double::sum);
+              }
+            }
           } catch (ConditionalCheckFailedException e) {
             // Condition check failed - build cancellation reason
             final CancellationReason reason = CancellationReason.builder()
@@ -1114,8 +1309,29 @@ public class PdbItemManager {
           index++;
         }
 
-        // All operations succeeded - commit transaction
-        return TransactWriteItemsResponse.builder().build();
+        // All operations succeeded - build response
+        final TransactWriteItemsResponse.Builder responseBuilder = TransactWriteItemsResponse.builder();
+
+        // Add consumed capacity if requested
+        if (request.returnConsumedCapacity() != null &&
+            request.returnConsumedCapacity() != software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity.NONE) {
+          final List<software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity> consumedCapacities = new ArrayList<>();
+
+          for (Map.Entry<String, Double> entry : capacityByTable.entrySet()) {
+            final software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity consumedCapacity =
+                software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity.builder()
+                    .tableName(entry.getKey())
+                    .capacityUnits(entry.getValue())
+                    .writeCapacityUnits(entry.getValue())
+                    .build();
+            consumedCapacities.add(consumedCapacity);
+          }
+
+          responseBuilder.consumedCapacity(consumedCapacities);
+        }
+
+        // Commit transaction
+        return responseBuilder.build();
       });
 
     } catch (TransactionCanceledException e) {
