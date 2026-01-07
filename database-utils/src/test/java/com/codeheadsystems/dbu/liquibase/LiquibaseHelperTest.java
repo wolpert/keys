@@ -22,7 +22,7 @@ class LiquibaseHelperTest  {
         .password("")
         .build();
     Jdbi jdbi = new JdbiFactory(database, Set.of()).createJdbi();
-    new LiquibaseHelper().runLiquibase(jdbi, "liquibase/liquibase-setup.xml");
+    new LiquibaseHelper().runLiquibase(jdbi, "keys/liquibase-setup.xml");
     final List<Map<String, Object>> list = jdbi.withHandle(handle -> handle.createQuery("select * from PDB_TABLE").mapToMap().list());
     assertThat(list).isEmpty();
   }

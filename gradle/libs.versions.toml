@@ -69,6 +69,7 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 pgjdbc = { module = "org.postgresql:postgresql", version.ref = "pgjdbc" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 pretenderdb = { module = "io.github.pretenderdb:pretender", version.ref = "pretenderdb" }
+database-utils = { module = "io.github.pretenderdb:database-utils", version.ref = "pretenderdb" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 
