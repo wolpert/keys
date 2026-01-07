@@ -1,9 +1,5 @@
 package com.codeheadsystems.keys.module;
 
-import com.codeheadsystems.dbu.factory.JdbiFactory;
-import com.codeheadsystems.dbu.liquibase.LiquibaseHelper;
-import com.codeheadsystems.dbu.model.Database;
-import com.codeheadsystems.dbu.model.ImmutableDatabase;
 import com.codeheadsystems.keys.dao.RawKeyDao;
 import com.codeheadsystems.keys.model.RawKey;
 import com.codeheadsystems.keys.resource.InvalidKeyExceptionMapper;
@@ -13,6 +9,10 @@ import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.IntoSet;
+import io.github.pretenderdb.dbu.factory.JdbiFactory;
+import io.github.pretenderdb.dbu.liquibase.LiquibaseHelper;
+import io.github.pretenderdb.dbu.model.Database;
+import io.github.pretenderdb.dbu.model.ImmutableDatabase;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.Set;
@@ -30,7 +30,7 @@ public class KeysServerModule {
   /**
    * The constant LIQUIBASE_SETUP_XML.
    */
-  public static final String LIQUIBASE_SETUP_XML = "liquibase/liquibase-setup.xml";
+  public static final String LIQUIBASE_SETUP_XML = "keys/liquibase-setup.xml";
 
   /**
    * Clock clock.
