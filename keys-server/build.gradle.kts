@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.bundles.jdbi)
     testImplementation(libs.bundles.jdbi.testing)
     implementation(libs.hsqldb)
+    implementation(libs.pretenderdb)
 
     // PreCompile
     implementation(libs.javax.inject)
