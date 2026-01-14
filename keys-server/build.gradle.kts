@@ -5,7 +5,7 @@
 plugins {
     id("buildlogic.java-application-conventions")
 
-    id("io.freefair.aspectj.post-compile-weaving") version "9.1.0" // Used for aspects
+    id("io.freefair.aspectj.post-compile-weaving") version "9.2.0" // Used for aspects
 }
 
 dependencies {
