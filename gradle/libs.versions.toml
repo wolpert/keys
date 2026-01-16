@@ -3,11 +3,11 @@
 
 [versions]
 assertj = "3.27.6"
-awsSDK = "2.41.8"
+awsSDK = "2.41.9"
 codehead-test = "3.0.5"
 codehead-metrics = "3.0.5"
 commons-codec = "1.20.0"
-dagger = "2.57.2"
+dagger = "2.58"
 dropwizard = "5.0.0"
 guava = "33.5.0-jre"
 hsqldb = '2.7.4'
@@ -18,7 +18,7 @@ junit-jupiter = "6.0.2"
 liquibase = '5.0.1'
 micrometer = '1.16.2'
 mokito = '5.21.0'
-pgjdbc = '42.7.8'
+pgjdbc = '42.7.9'
 pretenderdb = '1.0.3'
 slf4j = '2.0.17'
 rs-api = "4.0.0"
